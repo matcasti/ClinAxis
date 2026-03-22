@@ -6,6 +6,8 @@ const InstrumentsModule = (() => {
 
   let _instruments = [];
   let _searchTerm = '';
+  let _packages = [];
+  let _activeTab = 'instruments'; // 'instruments' | 'packages'
   let _editingFields = [];
 
   const FIELD_TYPES = [
@@ -27,16 +29,27 @@ const InstrumentsModule = (() => {
   ];
 
   async function render(container) {
-    _instruments = await DB.getAll('instruments');
+    [_instruments, _packages] = await Promise.all([
+      DB.getAll('instruments'),
+      DB.getAll('assessmentPackages'),
+    ]);
     _instruments.sort((a,b) => a.name.localeCompare(b.name));
 
     document.getElementById('topbar-actions').innerHTML = `
-      <button class="btn btn-primary btn-sm" id="btn-new-inst">
-        ${Utils.icon.plus} Nuevo Instrumento
+      <div class="toggle-group mr-2">
+        <button class="toggle-btn ${_activeTab==='instruments'?'active':''}" onclick="InstrumentsModule._switchTab('instruments')">Instrumentos</button>
+        <button class="toggle-btn ${_activeTab==='packages'?'active':''}" onclick="InstrumentsModule._switchTab('packages')">Paquetes</button>
+      </div>
+      <button class="btn btn-primary btn-sm" id="btn-new-inst-action">
+        ${Utils.icon.plus} ${_activeTab==='instruments'?'Nuevo Instrumento':'Nuevo Paquete'}
       </button>`;
-    document.getElementById('btn-new-inst')?.addEventListener('click', () => openForm(null));
+    document.getElementById('btn-new-inst-action')?.addEventListener('click', () => {
+      if (_activeTab === 'instruments') openForm(null);
+      else openPackageForm(null);
+    });
 
-    renderList(container);
+    if (_activeTab === 'instruments') renderList(container);
+    else renderPackages(container);
   }
 
   function renderList(container) {
@@ -306,6 +319,109 @@ const InstrumentsModule = (() => {
     _instruments = await DB.getAll('instruments');
     Utils.toast('Instrumento eliminado', 'info');
     renderList(document.getElementById('module-container'));
+  }
+
+  function _switchTab(tab) {
+    _activeTab = tab;
+    render(document.getElementById('module-container'));
+  }
+
+  function renderPackages(container) {
+    container.innerHTML = _packages.length ? `
+      <div class="grid-2">
+        ${_packages.map(pkg => `
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="font-semibold">${pkg.name}</div>
+                <div class="text-xs text-muted">${(pkg.instruments||[]).length} instrumento(s)</div>
+              </div>
+            </div>
+            <div class="card-body">
+              ${pkg.description ? `<p class="text-sm text-muted mb-3">${Utils.truncate(pkg.description,80)}</p>` : ''}
+              <div class="chips mb-3">
+                ${(pkg.instruments||[]).map(iid => {
+                  const inst = _instruments.find(i=>i.id===iid);
+                  return inst ? `<span class="chip">${inst.name}</span>` : '';
+                }).join('')}
+              </div>
+              <div class="flex gap-1">
+                <button class="btn btn-ghost btn-sm" onclick="InstrumentsModule.openPackageForm('${pkg.id}')">
+                  ${Utils.icon.edit} Editar
+                </button>
+                <button class="btn btn-icon btn-danger btn-sm ml-auto" onclick="InstrumentsModule.deletePackage('${pkg.id}')">
+                  ${Utils.icon.trash}
+                </button>
+              </div>
+            </div>
+          </div>`).join('')}
+      </div>` : `
+      <div class="empty-state">
+        ${Utils.icon.instruments}
+        <h3>Sin paquetes</h3>
+        <p>Crea conjuntos de instrumentos para aplicar juntos en una evaluación</p>
+        <button class="btn btn-primary" onclick="InstrumentsModule.openPackageForm(null)">
+          ${Utils.icon.plus} Nuevo Paquete
+        </button>
+      </div>`;
+  }
+
+  async function openPackageForm(id) {
+    const existing = id ? _packages.find(p => p.id === id) : null;
+    const selected = new Set(existing?.instruments || []);
+
+    const body = `
+      <div class="grid-2 mb-3">
+        <div class="form-group">
+          <label class="form-label">Nombre del paquete *</label>
+          <input type="text" class="form-input" id="pkg-name" value="${existing?.name||''}" placeholder="Ej: Evaluación inicial neurológica">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descripción</label>
+          <input type="text" class="form-input" id="pkg-desc" value="${existing?.description||''}" placeholder="Descripción breve">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Instrumentos incluidos</label>
+        <div class="grid-2" style="max-height:350px;overflow-y:auto;padding:.25rem">
+          ${_instruments.map(i => `
+            <label class="checkbox-field" style="padding:.5rem .75rem;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer">
+              <input type="checkbox" id="pkg-inst-${i.id}" ${selected.has(i.id)?'checked':''}>
+              <div>
+                <div class="text-sm fw-600">${i.name}</div>
+                <div class="text-xs text-muted">${i.category||''} · ${i.fields?.length||0} campos</div>
+              </div>
+            </label>`).join('')}
+        </div>
+      </div>`;
+
+    Utils.openLargeModal(existing ? 'Editar Paquete' : 'Nuevo Paquete de Evaluación', body, async () => {
+      const name = document.getElementById('pkg-name').value.trim();
+      if (!name) { Utils.toast('El nombre es obligatorio', 'warning'); return false; }
+      const instruments = _instruments.filter(i => document.getElementById(`pkg-inst-${i.id}`)?.checked).map(i => i.id);
+      if (!instruments.length) { Utils.toast('Selecciona al menos un instrumento', 'warning'); return false; }
+      const record = {
+        id:          existing?.id || Utils.uuid(),
+        name,
+        description: document.getElementById('pkg-desc').value,
+        instruments,
+        createdAt:   existing?.createdAt || Date.now(),
+      };
+      await DB.put('assessmentPackages', record);
+      _packages = await DB.getAll('assessmentPackages');
+      Utils.closeLargeModal();
+      Utils.toast(existing ? 'Paquete actualizado' : 'Paquete creado', 'success');
+      renderPackages(document.getElementById('module-container'));
+    });
+  }
+
+  async function deletePackage(id) {
+    const ok = await Utils.confirm('¿Eliminar paquete?', '');
+    if (!ok) return;
+    await DB.del('assessmentPackages', id);
+    _packages = await DB.getAll('assessmentPackages');
+    Utils.toast('Paquete eliminado', 'info');
+    renderPackages(document.getElementById('module-container'));
   }
 
   return { render, openDetail, openForm, deleteInstrument, removeField };

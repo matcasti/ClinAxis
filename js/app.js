@@ -8,10 +8,14 @@ const App = (() => {
 
   const NAV_ITEMS = [
     { id: 'dashboard',    label: 'Dashboard',        icon: 'dashboard',    module: () => DashboardModule },
+    { id: 'alerts',       label: 'Alertas',          icon: 'reminders',    module: () => AlertsModule },
+    null,
     { id: 'patients',     label: 'Pacientes',        icon: 'patients',     module: () => PatientsModule },
+    { id: 'history360',   label: 'Historia 360°',    icon: 'evaluations',  module: () => History360Module },
     { id: 'evaluations',  label: 'Evaluaciones',     icon: 'evaluations',  module: () => EvaluationsModule },
     { id: 'monitoring',   label: 'Monitoreo',        icon: 'monitoring',   module: () => MonitoringModule },
     { id: 'vitals',       label: 'Signos Vitales',   icon: 'vitals',       module: () => VitalsModule },
+    { id: 'medications',  label: 'Medicamentos',     icon: 'notes',        module: () => MedicationsModule },
     { id: 'goals',        label: 'Metas',            icon: 'goals',        module: () => GoalsModule },
     { id: 'notes',        label: 'Notas',            icon: 'notes',        module: () => NotesModule },
     null,
@@ -19,7 +23,8 @@ const App = (() => {
     { id: 'templates',    label: 'Plantillas',       icon: 'templates',    module: () => TemplatesModule },
     null,
     { id: 'reminders',    label: 'Recordatorios',    icon: 'reminders',    module: () => RemindersModule },
-    { id: 'reports',      label: 'Reportes',         icon: 'reports',      module: () => ReportsModule },
+    { id: 'analytics',    label: 'Analítica',        icon: 'monitoring',   module: () => AnalyticsModule },
+    { id: 'export',       label: 'Exportar Reporte', icon: 'reports',      module: () => ExportModule },
     null,
     { id: 'backup',       label: 'Respaldo',         icon: 'backup',       module: () => BackupModule },
   ];
@@ -76,10 +81,20 @@ const App = (() => {
       btn.innerHTML = `
         <span class="nav-icon">${Utils.icon[item.icon] || ''}</span>
         <span class="nav-label">${item.label}</span>
+        ${item.id === 'alerts' ? '<span class="nav-badge" id="alerts-nav-badge" style="display:none;margin-left:auto;background:var(--danger);color:white;border-radius:999px;font-size:.65rem;padding:.1rem .4rem;font-weight:700"></span>' : ''}
       `;
       btn.addEventListener('click', () => navigateTo(item.id));
       nav.appendChild(btn);
     });
+
+    // Load alert count badge async
+    AlertsModule.getCount().then(count => {
+      const badge = document.getElementById('alerts-nav-badge');
+      if (badge && count > 0) {
+        badge.textContent = count;
+        badge.style.display = 'inline';
+      }
+    }).catch(() => {});
   }
 
   function setActiveNav(id) {

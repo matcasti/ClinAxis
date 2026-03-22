@@ -1,13 +1,14 @@
 const GoalsModule = (() => {
   let _goals = [];
   let _patients = [];
+  let _instruments = [];
 
   const STATUS = ['Activo', 'Logrado', 'Parcial', 'Abandonado'];
   const PRIORITY = ['Alta', 'Media', 'Baja'];
 
   async function render(container) {
-    [_goals, _patients] = await Promise.all([
-      DB.getAll('goals'), DB.getAll('patients'),
+    [_goals, _patients, _instruments] = await Promise.all([
+      DB.getAll('goals'), DB.getAll('patients'), DB.getAll('instruments'),
     ]);
     _goals.sort((a,b) => b.createdAt - a.createdAt);
 
@@ -108,6 +109,16 @@ const GoalsModule = (() => {
             ${STATUS.map(s=>`<option value="${s}" ${existing?.status===s?'selected':''}>${s}</option>`).join('')}
           </select>
         </div>
+        <div class="form-group mb-3">
+          <label class="form-label">Vincular a instrumento (actualización automática de progreso)</label>
+          <select class="form-select" id="goal-linked-inst">
+            <option value="">Sin vínculo automático</option>
+            ${_instruments.filter(i => i.scoring?.type !== 'none').map(i =>
+              `<option value="${i.id}" ${existing?.linkedInstrumentId===i.id?'selected':''}>${i.name}</option>`
+            ).join('')}
+          </select>
+          <p class="form-hint">Al registrar una evaluación con este instrumento para el paciente, el progreso de la meta se actualizará automáticamente.</p>
+        </div>
       </div>
       <div class="form-group">
         <label class="form-label">Notas / Estrategia</label>
@@ -125,6 +136,7 @@ const GoalsModule = (() => {
         targetDate: document.getElementById('goal-date').value,
         progress: +document.getElementById('goal-progress').value,
         status: document.getElementById('goal-status').value,
+        linkedInstrumentId: document.getElementById('goal-linked-inst').value || null,
         priority: document.getElementById('goal-priority').value,
         notes: document.getElementById('goal-notes').value,
         createdAt: existing?.createdAt || Date.now(),

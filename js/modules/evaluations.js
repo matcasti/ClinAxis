@@ -9,12 +9,14 @@ const EvaluationsModule = (() => {
   let _instruments = [];
   let _searchTerm = '';
   let _filterPatient = '';
+  let _packages = [];
 
   async function render(container) {
-    [_evals, _patients, _instruments] = await Promise.all([
+    [_evals, _patients, _instruments, _packages] = await Promise.all([
       DB.getAll('evaluations'),
       DB.getAll('patients'),
       DB.getAll('instruments'),
+      DB.getAll('assessmentPackages'),
     ]);
     _evals.sort((a,b) => b.date.localeCompare(a.date));
 
@@ -254,6 +256,34 @@ const EvaluationsModule = (() => {
         createdAt: existing?.createdAt || now,
         updatedAt: now,
       };
+      
+      // Auto-update linked goals
+      try {
+        const linkedGoals = (await DB.getAll('goals'))
+          .filter(g => g.patientId === patientId &&
+                       g.status === 'Activo' &&
+                       g.linkedInstrumentId);
+
+        for (const goal of linkedGoals) {
+          const instData = record.instruments.find(i => i.instrumentId === goal.linkedInstrumentId);
+          if (!instData) continue;
+          const inst  = _instruments.find(i => i.id === goal.linkedInstrumentId);
+          if (!inst || !inst.scoring?.maxScore) continue;
+          const score = Utils.calcInstrumentScore(inst, instData.values);
+          if (score === null) continue;
+          const dir = inst.scoring?.direction || 'higher_better';
+          const max = inst.scoring.maxScore;
+          let pct = dir === 'lower_better'
+            ? Math.round(((max - score) / max) * 100)
+            : Math.round((score / max) * 100);
+          pct = Math.max(0, Math.min(100, pct));
+          goal.progress = pct;
+          if (pct >= 100) goal.status = 'Logrado';
+          await DB.put('goals', goal);
+        }
+        if (linkedGoals.length > 0) Utils.toast('Progreso de metas actualizado automáticamente', 'info');
+      } catch (_) { /* silent */ }
+      
       await DB.put('evaluations', record);
       _evals = await DB.getAll('evaluations');
       _evals.sort((a,b) => b.date.localeCompare(a.date));
@@ -280,21 +310,50 @@ const EvaluationsModule = (() => {
 
   function showInstrumentPicker(selectedInstruments, onAdd) {
     const body = `
-      <div class="search-box mb-3">
-        ${Utils.icon.search}
-        <input type="text" id="inst-pick-search" placeholder="Buscar instrumento…">
+      <div class="tabs mb-3" id="inst-pick-tabs">
+        <button class="tab active" onclick="EvaluationsModule._pickTab(this,'inst-pick-individual')">Instrumentos</button>
+        <button class="tab" onclick="EvaluationsModule._pickTab(this,'inst-pick-packages')">Paquetes (${_packages.length})</button>
       </div>
-      <div id="inst-pick-list">
-        ${_instruments.map(i => `
-          <div class="card mb-2" style="cursor:pointer" onclick="EvaluationsModule._pickInstrument('${i.id}')">
-            <div class="flex-between">
-              <div>
-                <strong>${i.name}</strong>
-                <div class="text-sm text-muted">${i.description||''} · ${i.fields?.length||0} campo(s)</div>
+
+      <div id="inst-pick-individual">
+        <div class="search-box mb-3" style="width:100%">
+          ${Utils.icon.search}
+          <input type="text" id="inst-pick-search" placeholder="Buscar instrumento…" style="width:100%">
+        </div>
+        <div id="inst-pick-list">
+          ${_instruments.map(i => `
+            <div class="card mb-2" style="cursor:pointer" onclick="EvaluationsModule._pickInstrument('${i.id}')">
+              <div class="flex-between" style="padding:.75rem 1rem">
+                <div>
+                  <strong>${i.name}</strong>
+                  <div class="text-sm text-muted">${i.description||''} · ${i.fields?.length||0} campo(s)</div>
+                </div>
+                <span class="badge badge-neutral">${i.category||''}</span>
               </div>
-              <span class="badge badge-neutral">${i.category||''}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <div id="inst-pick-packages" class="hidden">
+        ${_packages.length ? _packages.map(pkg => `
+          <div class="card mb-2" style="cursor:pointer" onclick="EvaluationsModule._pickPackage('${pkg.id}')">
+            <div class="flex-between" style="padding:.75rem 1rem">
+              <div>
+                <strong>${pkg.name}</strong>
+                <div class="text-sm text-muted">${pkg.description||''}</div>
+                <div class="chips mt-1">
+                  ${(pkg.instruments||[]).map(iid => {
+                    const inst = _instruments.find(i=>i.id===iid);
+                    return inst ? `<span class="chip">${inst.name}</span>` : '';
+                  }).join('')}
+                </div>
+              </div>
+              <span class="badge badge-accent">${(pkg.instruments||[]).length} instrumentos</span>
             </div>
-          </div>`).join('')}
+          </div>`).join('') :
+          `<div class="empty-state" style="padding:2rem">
+            <p class="text-muted">Sin paquetes creados. Créalos desde el módulo Instrumentos.</p>
+           </div>`}
       </div>`;
 
     Utils.openModal('Seleccionar Instrumento', body, null);
@@ -306,6 +365,27 @@ const EvaluationsModule = (() => {
         instrumentId: inst.id,
         instrumentName: inst.name,
         values: {},
+      });
+      Utils.closeModal();
+      onAdd();
+    };
+    
+    EvaluationsModule._pickTab = (btn, panelId) => {
+      document.querySelectorAll('#inst-pick-tabs .tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      ['inst-pick-individual','inst-pick-packages'].forEach(id => {
+        document.getElementById(id)?.classList.toggle('hidden', id !== panelId);
+      });
+    };
+
+    EvaluationsModule._pickPackage = (pkgId) => {
+      const pkg = _packages.find(p => p.id === pkgId);
+      if (!pkg) return;
+      (pkg.instruments||[]).forEach(iid => {
+        if (selectedInstruments.some(si => si.instrumentId === iid)) return;
+        const inst = _instruments.find(i => i.id === iid);
+        if (!inst) return;
+        selectedInstruments.push({ instrumentId: inst.id, instrumentName: inst.name, values: {} });
       });
       Utils.closeModal();
       onAdd();

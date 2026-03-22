@@ -83,6 +83,9 @@ const PatientsModule = (() => {
           <button class="btn btn-icon btn-danger" title="Eliminar" onclick="event.stopPropagation(); PatientsModule.deletePatient('${p.id}')">
             ${Utils.icon.trash}
           </button>
+          <button class="btn btn-icon" title="Historia 360°" onclick="event.stopPropagation(); History360Module.openForPatient('${p.id}')">
+            ${Utils.icon.monitoring}
+          </button>
         </div>
       </div>`;
   }

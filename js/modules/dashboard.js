@@ -39,6 +39,9 @@ const DashboardModule = (() => {
         ${statCard(Utils.icon.notes, 'Notas', notes.length, 'Registro clínico', 'neutral')}
       </div>
       
+      <!-- Alerts widget (filled async) -->
+      <div id="dash-alerts-area"></div>
+      
       ${(() => {
         const alerts = [];
         // Pacientes sin evaluación en 30 días
@@ -102,6 +105,46 @@ const DashboardModule = (() => {
     `;
 
     renderActivityChart(evaluations);
+
+    // Poblar widget de alertas de forma asíncrona (no bloquea el render)
+    AlertsModule.compute().then(alerts => {
+      const critical = alerts.filter(a => a.severity === 'critical');
+      const warnings = alerts.filter(a => a.severity === 'warning');
+      const alertArea = document.getElementById('dash-alerts-area');
+      if (!alertArea) return;
+      if (!critical.length && !warnings.length) {
+        alertArea.remove();
+        return;
+      }
+      const items = [...critical, ...warnings].slice(0, 5);
+      alertArea.innerHTML = `
+        <div class="card mb-4 ${critical.length ? 'border-danger' : ''}"
+             style="${!critical.length ? 'border-color:var(--warning)' : ''}">
+          <div class="card-header">
+            <h3 class="card-title ${critical.length ? 'text-danger' : ''}"
+                style="${!critical.length ? 'color:var(--warning)' : ''}">
+              ${critical.length ? '🔴' : '🟡'}
+              ${critical.length} alerta(s) crítica(s) · ${warnings.length} advertencia(s)
+            </h3>
+            <button class="btn btn-ghost btn-sm"
+                    onclick="App.navigateTo('alerts')">
+              Ver todas →
+            </button>
+          </div>
+          ${items.map(a => `
+            <div class="timeline-item"
+                 onclick="App.navigateTo('alerts')"
+                 style="cursor:pointer">
+              <div class="timeline-dot ${a.severity === 'critical' ? 'dot-danger' : ''}"
+                   style="${a.severity === 'warning' ? 'background:var(--warning)' : ''}">
+              </div>
+              <div class="timeline-content">
+                <div class="timeline-title">${a.title}</div>
+                <div class="timeline-meta">${a.body}</div>
+              </div>
+            </div>`).join('')}
+        </div>`;
+    }).catch(() => {}); // silencioso si AlertsModule aún no tiene datos
   }
 
   function statCard(iconSvg, label, value, sub, color) {

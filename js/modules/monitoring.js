@@ -95,6 +95,8 @@ const MonitoringModule = (() => {
       numericFields.map(f => `<option value="${f.id}" ${_selectedField===f.id?'selected':''}>${f.name}</option>`).join('');
     if (!_selectedField) _selectedField = '__score__';
   }
+  
+  document.getElementById('global-charts-area').innerHTML = '';
 
   function drawGlobalCharts() {
     Charts.destroyAll();
@@ -200,6 +202,17 @@ const MonitoringModule = (() => {
     Charts.line('chart-global-line', allDates.map(d => Utils.formatDateShort(d)), lineDatasets);
     Charts.bar('chart-global-bar', barLabels, [{ label: _selectedField === '__score__' ? 'Puntuación' : inst.fields.find(f=>f.id===_selectedField)?.name || '', data: barData }]);
     if (radarLabels.length >= 3) Charts.radar('chart-global-radar', radarLabels, radarDatasets);
+  }
+  
+  // AI Analysis button
+  const toolbar = document.querySelector('#module-container .toolbar');
+  if (toolbar) {
+    const aiBtn = document.createElement('button');
+    aiBtn.className = 'btn btn-ghost btn-sm';
+    aiBtn.style.color = 'var(--color-accent)';
+    aiBtn.innerHTML = '✨ Analizar con IA';
+    aiBtn.onclick = () => _runAIAnalysis();
+    toolbar.appendChild(aiBtn);
   }
 
   // ── BY PATIENT VIEW ──
@@ -307,6 +320,66 @@ const MonitoringModule = (() => {
         Charts.radar(radarId, numFields.map(f => f.name), radarDatasets);
       }
     });
+  }
+  
+  async function _runAIAnalysis() {
+    const inst = _instruments.find(i => i.id === _selectedInstrument);
+    if (!inst) return;
+
+    const container = document.getElementById('module-container');
+    let area = document.getElementById('monitoring-ai-area');
+    if (!area) {
+      area = document.createElement('div');
+      area.id = 'monitoring-ai-area';
+      area.className = 'mb-4';
+      container.insertBefore(area, container.firstChild);
+    }
+    area.innerHTML = `<div class="card"><div class="card-body"><div class="spinner"></div><p class="text-muted text-sm text-center mt-2">Analizando evolución grupal…</p></div></div>`;
+
+    // Build context
+    const patientData = {};
+    _evals.forEach(ev => {
+      const id = (ev.instruments||[]).find(i=>i.instrumentId===_selectedInstrument);
+      if (!id) return;
+      const score = Utils.calcInstrumentScore(inst, id.values);
+      if (score===null) return;
+      const p = _patients.find(x=>x.id===ev.patientId);
+      if (!patientData[ev.patientId]) patientData[ev.patientId] = { name: p?Utils.patientLabel(p):'—', scores:[] };
+      patientData[ev.patientId].scores.push({ date:ev.date, score });
+    });
+
+    const context = `
+Instrumento: ${inst.name} (${inst.scoring?.direction||'higher_better'}, max: ${inst.scoring?.maxScore||'N/A'})
+Datos por paciente: ${JSON.stringify(Object.values(patientData).map(pd=>({
+  paciente: pd.name,
+  scores: pd.scores,
+  tendencia: pd.scores.length>=2 ? Utils.getTrend(pd.scores.map(s=>s.score), inst.scoring?.direction||'higher_better') : 'sin datos'
+})), null, 1)}`.trim();
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 800,
+          system: 'Eres un especialista en análisis clínico. Analiza la evolución grupal de pacientes y proporciona: 1) Tendencias generales del grupo, 2) Pacientes que requieren atención prioritaria, 3) Recomendaciones. Sé conciso y clínico.',
+          messages: [{ role: 'user', content: `Analiza estos datos:\n${context}` }],
+        }),
+      });
+      const data = await res.json();
+      const text = data.content?.[0]?.text || '';
+      area.innerHTML = `
+        <div class="card mb-4" style="border-color:var(--accent)">
+          <div class="card-header">
+            <h3 class="card-title" style="color:var(--accent)">✨ Análisis IA — ${inst.name}</h3>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('monitoring-ai-area').remove()">✕</button>
+          </div>
+          <div class="card-body"><div style="white-space:pre-wrap;font-size:.9rem;line-height:1.7">${text}</div></div>
+        </div>`;
+    } catch(e) {
+      area.innerHTML = `<div class="card mb-4"><div class="card-body"><p class="text-danger">Error: ${e.message}</p></div></div>`;
+    }
   }
 
   return { render, setView };
