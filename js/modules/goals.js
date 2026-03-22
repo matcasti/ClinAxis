@@ -152,7 +152,7 @@ const GoalsModule = (() => {
 
   async function deleteGoal(id) {
     const g = await DB.get('goals', id);
-    const ok = await Utils.confirm('¿Eliminar meta?', '');
+    const ok = await Utils.confirm('¿Eliminar esta meta terapéutica? Esta acción no se puede deshacer.', 'Eliminar meta');
     if (!ok) return;
     await DB.del('goals', id);
     _goals = await DB.getAll('goals');

@@ -233,7 +233,7 @@ const RemindersModule = (() => {
 
   async function deleteReminder(id) {
     const r = await DB.get('reminders', id);
-    const ok = await Utils.confirm('¿Eliminar recordatorio?', '');
+    const ok = await Utils.confirm('¿Eliminar este recordatorio? Esta acción no se puede deshacer.', 'Eliminar recordatorio');
     if (!ok) return;
     await DB.del('reminders', id);
     _reminders = await DB.getAll('reminders');

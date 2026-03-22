@@ -6,6 +6,8 @@ const History360Module = (() => {
 
   let _selectedPatient = null;
   let _patients = [];
+  let _pendingEvSorted = [];
+  let _pendingInstruments = [];
 
   /* Punto de entrada desde tarjeta de paciente */
   function openForPatient(id) {
@@ -163,7 +165,8 @@ const History360Module = (() => {
     `;
 
     // Draw evolution charts after DOM ready
-    _drawEvolutionCharts(evSorted, instruments);
+    _pendingEvSorted = evSorted;
+    _pendingInstruments = instruments;
   }
 
   /* ── Helpers UI ── */
@@ -181,36 +184,29 @@ const History360Module = (() => {
     btn.classList.add('active');
     document.querySelectorAll('[id^="h360-"]:not(#h360-tabs)').forEach(d => d.classList.add('hidden'));
     document.getElementById(panelId)?.classList.remove('hidden');
-    // Re-draw charts when evolution tab is clicked
-    if (panelId === 'h360-evolution') {
-      // Charts may have been destroyed; re-init
-      const container = document.getElementById('module-container');
-      if (!container) return;
-      // trigger re-draw by checking canvas presence
-      document.querySelectorAll('[id^="h360-chart-"]').forEach(canvas => {
-        if (!canvas) return;
-        // chart already drawn at render time; just ensure visible
-      });
+    // Draw evolution charts lazily — canvas must be visible (non-zero dimensions) for Chart.js
+    if (panelId === 'h360-evolution' && _pendingEvSorted.length) {
+      setTimeout(() => _drawEvolutionCharts(_pendingEvSorted, _pendingInstruments), 50);
     }
   }
 
   /* ── Timeline ── */
   function _buildTimeline(evals, notes, vitals, goals, reminders) {
     const events = [
-      ...evals.map(e     => ({ date: e.date,                                icon: 'dot-primary', label: e.title||'Evaluación',    sub: `${(e.instruments||[]).length} instrumento(s)` })),
-      ...notes.map(n     => ({ date: n.date,                                icon: 'dot-accent',  label: n.title||'Nota',           sub: Utils.truncate(n.content,60) })),
-      ...vitals.map(v    => ({ date: v.datetime.split('T')[0],              icon: 'dot-neutral', label: 'Signos Vitales',          sub: Object.entries(v.values||{}).map(([k,v2])=>`${k}:${v2}`).join(' · ') })),
-      ...goals.map(g     => ({ date: g.createdAt?new Date(g.createdAt).toISOString().split('T')[0]:'', icon: 'dot-primary', label: `Meta: ${Utils.truncate(g.title,40)}`, sub: `${g.progress}% · ${g.status}` })),
-      ...reminders.map(r => ({ date: r.date,                                icon: r.completed?'dot-neutral':'dot-accent', label: r.title, sub: r.completed?'Completado':'Pendiente' })),
+      ...evals.map(e     => ({ date: e.date,                                                              icon: 'dot-primary', label: e.title||'Evaluación',    sub: `${(e.instruments||[]).length} instrumento(s)` })),
+      ...notes.map(n     => ({ date: n.date,                                                              icon: 'dot-accent',  label: n.title||'Nota',           sub: Utils.truncate(n.content,60) })),
+      ...vitals.map(v    => ({ date: v.datetime.split('T')[0],                                            icon: 'dot-neutral', label: 'Signos Vitales',          sub: Object.entries(v.values||{}).map(([k,v2])=>`${k}:${v2}`).join(' · ') })),
+      ...goals.map(g     => ({ date: g.createdAt?new Date(g.createdAt).toISOString().split('T')[0]:'',   icon: 'dot-primary', label: `Meta: ${Utils.truncate(g.title,40)}`, sub: `${g.progress}% · ${g.status}` })),
+      ...reminders.map(r => ({ date: r.date,                                                              icon: r.completed?'dot-neutral':'dot-accent', label: r.title, sub: r.completed?'Completado':'Pendiente' })),
     ].filter(e => e.date).sort((a, b) => b.date.localeCompare(a.date));
 
     if (!events.length) return '<div class="empty-state" style="padding:2rem"><p class="text-muted">Sin actividad registrada</p></div>';
 
     let curMonth = '';
-    return '<div class="card">' + events.map(ev => {
+    return `<div class="card"><div style="padding:0.25rem 0.75rem">` + events.map(ev => {
       const m = ev.date.slice(0,7);
       const header = m !== curMonth
-        ? `<div class="text-xs fw-600 text-muted px-3 pt-3" style="text-transform:uppercase;letter-spacing:.05em">
+        ? `<div class="text-xs fw-600 text-muted" style="text-transform:uppercase;letter-spacing:.05em;padding:0.875rem 0 0.25rem">
              ${new Date(m+'-01T12:00:00').toLocaleString('es-ES',{month:'long',year:'numeric'})}
            </div>`
         : '';
@@ -223,7 +219,7 @@ const History360Module = (() => {
             <div class="timeline-meta">${Utils.formatDate(ev.date)} ${ev.sub ? '· '+ev.sub : ''}</div>
           </div>
         </div>`;
-    }).join('') + '</div>';
+    }).join('') + `</div></div>`;
   }
 
   /* ── Evolution charts ── */
