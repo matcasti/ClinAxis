@@ -30,18 +30,20 @@ const ReportsModule = (() => {
     container.innerHTML = `
       <div class="card mb-4">
         <div class="card-header"><h3 class="card-title">Generar Reporte de Paciente</h3></div>
-        <div class="flex gap-3 flex-wrap">
-          <div class="form-group mb-0" style="min-width:260px">
-            <label class="form-label">Paciente</label>
-            <select class="form-select" id="report-patient-sel">
-              <option value="">— Seleccionar paciente —</option>
-              ${_patients.map(p => `<option value="${p.id}" ${_selectedPatient===p.id?'selected':''}>${Utils.patientLabel(p)}</option>`).join('')}
-            </select>
-          </div>
-          <div class="flex items-end">
-            <button class="btn btn-primary" id="btn-gen-report">
-              ${Utils.icon.reports} Generar Reporte
-            </button>
+        <div class="card-body">
+          <div class="flex gap-3 flex-wrap">
+            <div class="form-group mb-0" style="min-width:260px">
+              <label class="form-label">Paciente</label>
+              <select class="form-select" id="report-patient-sel">
+                <option value="">— Seleccionar paciente —</option>
+                ${_patients.map(p => `<option value="${p.id}" ${_selectedPatient===p.id?'selected':''}>${Utils.patientLabel(p)}</option>`).join('')}
+              </select>
+            </div>
+            <div class="flex items-end">
+              <button class="btn btn-primary" id="btn-gen-report">
+                ${Utils.icon.reports} Generar Reporte
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -261,7 +261,7 @@ const Utils = {
 
   // ── Render template/instrument field ──
   renderFormField(field, value = '', opts = {}) {
-    const id = `field_${field.id}`;
+    const id = `field-${field.id}`;
     const val = value !== null && value !== undefined ? value : (field.default || '');
     const req = field.required ? '<span class="required">*</span>' : '';
     const label = `<label class="form-label" for="${id}">${Utils.escapeHtml(field.name)}${req}</label>`;
@@ -306,7 +306,10 @@ const Utils = {
             <span>${Utils.escapeHtml(o)}</span>
           </label>`
         ).join('');
-        control = `<div class="likert-scale" id="${id}">${likertOptions}</div>`;
+        control = `<div class="likert-scale" id="${id}">
+          <input type="hidden" id="${id}" name="${field.id}" value="${val !== '' ? val : ''}">
+          ${likertOptions}
+        </div>`;
         break;
       case 'checkbox':
         control = `<label class="checkbox-field">
@@ -326,7 +329,10 @@ const Utils = {
     const scale = el.closest('.likert-scale');
     scale.querySelectorAll('.likert-option').forEach(o => o.classList.remove('selected'));
     el.classList.add('selected');
-    el.querySelector('input[type="radio"]').checked = true;
+    const radio = el.querySelector('input[type="radio"]');
+    radio.checked = true;
+    const hidden = scale.querySelector(`input[type="hidden"]`);
+    if (hidden) hidden.value = radio.value;
   },
 
   // ── Category colors ──

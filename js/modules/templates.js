@@ -58,21 +58,23 @@ const TemplatesModule = (() => {
             <div class="text-xs text-muted">${t.category||'Sin categoría'} · ${t.fields?.length||0} campo(s) · ${requiredCount} obligatorio(s)</div>
           </div>
         </div>
-        ${t.description ? `<p class="text-sm text-muted mb-3">${Utils.truncate(t.description, 80)}</p>` : ''}
-        <div class="flex flex-wrap gap-1 mb-3">
-          ${(t.fields||[]).slice(0,5).map(f => `<span class="chip">${f.name}</span>`).join('')}
-          ${(t.fields||[]).length > 5 ? `<span class="chip">+${(t.fields||[]).length-5} más</span>` : ''}
-        </div>
-        <div class="flex gap-1">
-          <button class="btn btn-ghost btn-sm" onclick="TemplatesModule.openForm('${t.id}')">
-            ${Utils.icon.edit} Editar
-          </button>
-          <button class="btn btn-ghost btn-sm" onclick="TemplatesModule.duplicateTemplate('${t.id}')">
-            Duplicar
-          </button>
-          <button class="btn btn-icon btn-danger btn-sm ml-auto" onclick="TemplatesModule.deleteTemplate('${t.id}')">
-            ${Utils.icon.trash}
-          </button>
+        <div class="card-body">
+          ${t.description ? `<p class="text-sm text-muted mb-3">${Utils.truncate(t.description, 80)}</p>` : ''}
+          <div class="flex flex-wrap gap-1 mb-3">
+            ${(t.fields||[]).slice(0,5).map(f => `<span class="chip">${f.name}</span>`).join('')}
+            ${(t.fields||[]).length > 5 ? `<span class="chip">+${(t.fields||[]).length-5} más</span>` : ''}
+          </div>
+          <div class="flex gap-1">
+            <button class="btn btn-ghost btn-sm" onclick="TemplatesModule.openForm('${t.id}')">
+              ${Utils.icon.edit} Editar
+            </button>
+            <button class="btn btn-ghost btn-sm" onclick="TemplatesModule.duplicateTemplate('${t.id}')">
+              Duplicar
+            </button>
+            <button class="btn btn-icon btn-danger btn-sm ml-auto" onclick="TemplatesModule.deleteTemplate('${t.id}')">
+              ${Utils.icon.trash}
+            </button>
+          </div>
         </div>
       </div>`;
   }

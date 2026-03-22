@@ -84,7 +84,8 @@
 }
 .btn-icon:hover { background: var(--surface-2); color: var(--text-1); }
 .btn-icon svg { width: 16px; height: 16px; }
-.btn-icon.danger:hover { background: var(--danger-light); color: var(--danger); }
+.btn-icon.danger:hover,
+.btn-icon.btn-danger:hover { background: var(--danger-light); color: var(--danger); }
 
 /* ── CARDS ── */
 .card {
@@ -112,6 +113,25 @@
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--text-1);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.card-title svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+/* stat-neutral — variante sin color semántico */
+.stat-neutral .stat-icon { color: var(--text-3); }
+.stat-neutral .stat-value { color: var(--text-2); }
+
+/* Padding interior para canvas de gráficos en chart-card */
+.chart-card .chart-wrap {
+  padding: 0.75rem 1rem;
 }
 
 .card-body { padding: 1.25rem; }
@@ -125,6 +145,23 @@
   justify-content: flex-end;
   gap: 0.5rem;
 }
+
+/* Padding automático para contenido directo dentro de .card (sin .card-body wrapper) */
+.card-header ~ p {
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+.card-header + p { padding-top: 0.875rem; }
+
+/* Arregla la doble definición de .patient-card que elimina el padding */
+.patient-card {
+  padding: 1rem 1.125rem !important;
+}
+
+/* Padding directo para cards sin card-body explícito */
+.card > .timeline-item:first-of-type { margin-top: 0.5rem; }
+.card > .timeline-item:last-of-type  { margin-bottom: 0.5rem; }
+.card > .empty-state { border-radius: inherit; }
 
 /* Stat cards */
 .stat-card {
@@ -200,7 +237,8 @@
 
 .form-label .required { color: var(--danger); margin-left: 2px; }
 
-.form-control {
+.form-control,
+.form-input {
   width: 100%;
   padding: 0.5rem 0.75rem;
   background: var(--surface);
@@ -213,25 +251,42 @@
   appearance: none;
 }
 
-.form-control:focus {
+.form-control:focus,
+.form-input:focus,
+.form-select:focus {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--primary-light);
 }
 
-.form-control::placeholder { color: var(--text-4); }
+.form-control::placeholder,
+.form-input::placeholder { color: var(--text-4); }
 
-textarea.form-control {
+textarea.form-control,
+textarea.form-input {
   resize: vertical;
   min-height: 90px;
   line-height: 1.5;
 }
 
-select.form-control {
+select.form-control,
+select.form-input,
+.form-select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  padding-right: 2.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-sm);
+  color: var(--text-1);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%2394A3B8' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.75rem center;
-  padding-right: 2.25rem;
+  cursor: pointer;
 }
 
 .form-hint {
@@ -448,6 +503,11 @@ select.form-control {
 
 .modal-overlay.hidden { display: none !important; }
 
+/* El modal pequeño (selector) debe flotar por encima del modal grande */
+#modal-overlay {
+  z-index: 600;
+}
+
 .modal {
   background: var(--surface);
   border-radius: var(--radius-lg);
@@ -593,12 +653,33 @@ select.form-control {
   width: 15px;
   height: 15px;
   pointer-events: none;
+  z-index: 1;
 }
 
+.search-box input,
 .search-input {
   padding: 0.5rem 0.75rem 0.5rem 2.25rem;
   width: 220px;
+  min-width: 180px;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-sm);
+  color: var(--text-1);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  line-height: 1;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
+
+.search-box input:focus,
+.search-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.search-box input::placeholder,
+.search-input::placeholder { color: var(--text-4); }
 
 /* ── PATIENT CARD ── */
 .patient-card {
@@ -1023,6 +1104,32 @@ select.form-control {
 
 /* ── CHART WRAP ── */
 .chart-wrap { position: relative; }
+
+/* ── CALENDAR ── */
+.cal-cell {
+  transition: background var(--transition-fast);
+}
+.cal-cell:hover {
+  background: var(--surface-hover);
+}
+.cal-today {
+  background: var(--primary-light) !important;
+  border-color: var(--primary) !important;
+}
+.cal-today .text-xs { color: var(--primary); font-weight: 700; }
+.cal-overdue {
+  background: color-mix(in srgb, var(--danger) 6%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 30%, var(--border)) !important;
+}
+.cal-head {
+  padding: 0.375rem 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-3);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
 
 /* ── PRINT ── */
 @media print {

@@ -75,7 +75,6 @@ const InstrumentsModule = (() => {
   }
 
   function instrumentCard(inst) {
-    const numericFields = inst.fields.filter(f => ['number','slider','likert','select'].includes(f.type)).length;
     return `
       <div class="card">
         <div class="card-header">
@@ -85,21 +84,23 @@ const InstrumentsModule = (() => {
           </div>
           <span class="badge badge-neutral">${inst.scoring?.type||'none'}</span>
         </div>
-        ${inst.description ? `<p class="text-sm text-muted mb-2">${Utils.truncate(inst.description, 80)}</p>` : ''}
-        <div class="text-xs text-muted mb-3">
-          Dirección: ${DIRECTIONS.find(d=>d.value===inst.scoring?.direction)?.label||'—'} ·
-          Puntuación máx: ${inst.scoring?.maxScore||'—'}
-        </div>
-        <div class="flex gap-1 mt-auto">
-          <button class="btn btn-ghost btn-sm" onclick="InstrumentsModule.openDetail('${inst.id}')">
-            ${Utils.icon.eye} Ver campos
-          </button>
-          <button class="btn btn-ghost btn-sm" onclick="InstrumentsModule.openForm('${inst.id}')">
-            ${Utils.icon.edit} Editar
-          </button>
-          <button class="btn btn-icon btn-danger btn-sm ml-auto" onclick="InstrumentsModule.deleteInstrument('${inst.id}')">
-            ${Utils.icon.trash}
-          </button>
+        <div class="card-body">
+          ${inst.description ? `<p class="text-sm text-muted mb-2">${Utils.truncate(inst.description, 80)}</p>` : ''}
+          <div class="text-xs text-muted mb-3">
+            Dirección: ${DIRECTIONS.find(d=>d.value===inst.scoring?.direction)?.label||'—'} ·
+            Puntuación máx: ${inst.scoring?.maxScore||'—'}
+          </div>
+          <div class="flex gap-1">
+            <button class="btn btn-ghost btn-sm" onclick="InstrumentsModule.openDetail('${inst.id}')">
+              ${Utils.icon.eye} Ver campos
+            </button>
+            <button class="btn btn-ghost btn-sm" onclick="InstrumentsModule.openForm('${inst.id}')">
+              ${Utils.icon.edit} Editar
+            </button>
+            <button class="btn btn-icon btn-danger btn-sm ml-auto" onclick="InstrumentsModule.deleteInstrument('${inst.id}')">
+              ${Utils.icon.trash}
+            </button>
+          </div>
         </div>
       </div>`;
   }
