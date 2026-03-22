@@ -191,7 +191,7 @@ const MedicationsModule = (() => {
 
   async function deleteMed(id) {
     const m = await DB.get('medications', id);
-    const ok = await Utils.confirm('¿Eliminar este medicamento? Esta acción no se puede deshacer.', 'Eliminar medicamento');
+    const ok = await Utils.confirm('Eliminar medicamento', '¿Eliminar este medicamento? Esta acción no se puede deshacer.');
     if (!ok) return;
     await DB.del('medications', id);
     _meds = await DB.getAll('medications');

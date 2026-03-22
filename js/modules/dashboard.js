@@ -207,10 +207,12 @@ const DashboardModule = (() => {
       counts.push(evaluations.filter(e => e.date === dayStr).length);
     }
 
-    Charts.bar('chart-activity', days, [{
+    Charts.line('chart-activity', days, [{
       label: 'Evaluaciones',
       data: counts,
-    }], { tension: 0.4, fillArea: true });
+      tension: 0.4,
+      fill: true,
+    }]);
   }
 
   return { render };

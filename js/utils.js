@@ -91,12 +91,14 @@ const Utils = {
   calcInstrumentScore(instrument, values) {
     if (!instrument.scoring || instrument.scoring.type === 'none') return null;
     let total = 0;
-    let hasValue = false;
+    let count = 0;
     for (const field of instrument.fields) {
       const v = Utils.getNumericValue(field, values[field.id]);
-      if (v !== null) { total += v; hasValue = true; }
+      if (v !== null) { total += v; count++; }
     }
-    return hasValue ? total : null;
+    if (!count) return null;
+    if (instrument.scoring.type === 'average') return Math.round((total / count) * 10) / 10;
+    return total; // 'sum' y cualquier otro tipo
   },
 
   // ── Trend ──
@@ -265,11 +267,11 @@ const Utils = {
   },
 
   // ── Confirm ──
-  confirm(message, title = 'Confirmar acción') {
-    return new Promise(resolve => {
-      const overlay = document.getElementById('confirm-overlay');
-      document.getElementById('confirm-title').textContent = title;
-      document.getElementById('confirm-message').textContent = message;
+  confirm(title, message = '') {
+  return new Promise(resolve => {
+    const overlay = document.getElementById('confirm-overlay');
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-message').textContent = message;
       overlay.classList.remove('hidden');
       document.getElementById('confirm-ok').onclick = () => { overlay.classList.add('hidden'); resolve(true); };
       document.getElementById('confirm-cancel').onclick = () => { overlay.classList.add('hidden'); resolve(false); };
@@ -289,7 +291,7 @@ const Utils = {
   },
 
   // ── Render template/instrument field ──
-  renderFormField(field, value = '', opts = {}) {
+  renderFormField(field, value = '') {
     const id = `field-${field.id}`;
     const val = value !== null && value !== undefined ? value : (field.default || '');
     const req = field.required ? '<span class="required">*</span>' : '';

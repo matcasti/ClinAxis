@@ -426,5 +426,6 @@ const InstrumentsModule = (() => {
     renderPackages(document.getElementById('module-container'));
   }
 
-  return { render, openDetail, openForm, deleteInstrument, removeField };
+  return { render, openDetail, openForm, deleteInstrument, removeField,
+         _switchTab, openPackageForm, deletePackage };
 })();

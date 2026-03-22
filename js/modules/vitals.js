@@ -210,7 +210,7 @@ const VitalsModule = (() => {
 
   async function deleteVital(id) {
     const v = await DB.get('vitals', id);
-    const ok = await Utils.confirm('¿Eliminar este registro de signos vitales? Esta acción no se puede deshacer.', 'Eliminar registro');
+    const ok = await Utils.confirm('Eliminar registro', '¿Eliminar este registro de signos vitales? Esta acción no se puede deshacer.');
     if (!ok) return;
     await DB.del('vitals', id);
     _vitals = await DB.getAll('vitals');

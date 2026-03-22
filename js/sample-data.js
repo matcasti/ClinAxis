@@ -33,7 +33,7 @@ const SAMPLE_DATA = {
       templateId: "tmpl-rehab",
       fields: {
         f1: "Carlos", f2: "Rodríguez Muñoz",
-        f3: "1967-07-22", f4: "Masculino",
+        f3: "1967-07-22", 
         f4: "Fractura pertrocantérea cadera derecha (10/2025). Osteosíntesis con clavo endomedular.",
         f5: "Dr. Andrés Pérez — Traumatología HCSBA",
         f6: "2025-11-08",
