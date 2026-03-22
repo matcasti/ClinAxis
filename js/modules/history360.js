@@ -143,25 +143,25 @@ const History360Module = (() => {
       </div>
 
       <!-- Tab panels -->
-      <div id="h360-timeline">
+      <div id="h360-timeline" class="h360-panel">
         ${_buildTimeline(evaluations, notes, vitals, goals, reminders)}
       </div>
-      <div id="h360-evals" class="hidden">
+      <div id="h360-evals" class="h360-panel hidden">
         ${_buildEvaluations(evSorted, instruments)}
       </div>
-      <div id="h360-evolution" class="hidden">
+      <div id="h360-evolution" class="h360-panel hidden">
         ${_buildEvolutionPlaceholder(evSorted, instruments)}
       </div>
-      <div id="h360-notes" class="hidden">
+      <div id="h360-notes" class="h360-panel hidden">
         ${_buildNotes(notes)}
       </div>
-      <div id="h360-goals" class="hidden">
+      <div id="h360-goals" class="h360-panel hidden">
         ${_buildGoals(goals)}
       </div>
-      <div id="h360-meds" class="hidden">
+      <div id="h360-meds" class="h360-panel hidden">
         ${_buildMeds(medications)}
       </div>
-      <div id="h360-vitals" class="hidden">
+      <div id="h360-vitals" class="h360-panel hidden">
         ${_buildVitalsSummary(vitals)}
       </div>
     `;
@@ -184,7 +184,7 @@ const History360Module = (() => {
   function _tab(btn, panelId) {
     document.querySelectorAll('#h360-tabs .tab').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
-    document.querySelectorAll('[id^="h360-"]:not(#h360-tabs)').forEach(d => d.classList.add('hidden'));
+    document.querySelectorAll('.h360-panel').forEach(d => d.classList.add('hidden'));
     document.getElementById(panelId)?.classList.remove('hidden');
     // Draw evolution charts lazily — canvas must be visible (non-zero dimensions) for Chart.js
     if (panelId === 'h360-evolution' && _pendingEvSorted.length) {

@@ -222,5 +222,5 @@ const VitalsModule = (() => {
     });
   }
 
-  return { render, deleteVital };
+  return { render, openForm, deleteVital };
 })();
