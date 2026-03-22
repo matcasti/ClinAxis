@@ -132,7 +132,12 @@ const App = (() => {
     }
 
     // Close mobile sidebar after navigation
-    document.getElementById('sidebar').classList.remove('mobile-open');
+    if (App._closeMobileMenu) {
+      App._closeMobileMenu();
+    } else {
+      document.getElementById('sidebar').classList.remove('mobile-open');
+      document.getElementById('sidebar-backdrop')?.classList.remove('active');
+    }
   }
 
   function bindGlobalEvents() {
@@ -145,9 +150,28 @@ const App = (() => {
     document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
 
     // Mobile menu
+    const _sidebar = document.getElementById('sidebar');
+    const _backdrop = document.getElementById('sidebar-backdrop');
+
+    function _openMobileMenu() {
+      _sidebar.classList.add('mobile-open');
+      _backdrop.classList.add('active');
+      document.body.style.overflow = 'hidden'; // evitar scroll del body
+    }
+    function _closeMobileMenu() {
+      _sidebar.classList.remove('mobile-open');
+      _backdrop.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
     document.getElementById('mobile-menu-btn').addEventListener('click', () => {
-      document.getElementById('sidebar').classList.toggle('mobile-open');
+      _sidebar.classList.contains('mobile-open') ? _closeMobileMenu() : _openMobileMenu();
     });
+
+    _backdrop.addEventListener('click', _closeMobileMenu);
+
+    // Exponer para uso en navigateTo
+    App._closeMobileMenu = _closeMobileMenu;
 
     // Hash change
     window.addEventListener('hashchange', () => {

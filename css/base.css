@@ -193,7 +193,7 @@ input, textarea, select, button {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── Mobile only ── */
-.mobile-only { display: none; }
+.mobile-only { display: none !important; }
 
 @media (max-width: 768px) {
   .mobile-only { display: flex !important; }

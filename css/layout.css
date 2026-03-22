@@ -331,6 +331,18 @@
 .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
 .grid-auto { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
 
+/* ── Sidebar Backdrop (mobile overlay) ── */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 98;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+.sidebar-backdrop.active { display: block; }
+
 @media (max-width: 1100px) {
   .grid-4 { grid-template-columns: repeat(2, 1fr); }
   .grid-3 { grid-template-columns: repeat(2, 1fr); }
@@ -344,13 +356,106 @@
   .sidebar {
     position: fixed;
     left: 0; top: 0;
+    height: 100vh;
+    width: min(var(--sidebar-width), 85vw) !important;
+    min-width: unset !important;
     transform: translateX(-100%);
     transition: transform var(--transition-slow);
+    z-index: 100;
   }
 
-  .sidebar.mobile-open {
-    transform: translateX(0);
-  }
+  .sidebar.mobile-open { transform: translateX(0); }
+
+  /* Ocultar toggle de colapso en móvil (no aplica) */
+  #sidebar-toggle { display: none !important; }
 
   .main-wrapper { width: 100%; }
+
+  /* Tablas con scroll horizontal dentro de cards */
+  .card { overflow-x: auto; }
+
+  /* Toolbar apilada en móvil */
+  .toolbar { flex-direction: column; align-items: stretch; }
+  .toolbar .search-box input,
+  .toolbar .search-box { width: 100%; min-width: unset; }
+  .toolbar .form-select { width: 100%; }
+
+  /* Grids de detalle a 1 columna */
+  .detail-grid { grid-template-columns: 1fr; }
+
+  /* Kanban de metas */
+  [style*="grid-template-columns:repeat(4"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* ── Pantallas pequeñas (≤ 480px) ── */
+@media (max-width: 480px) {
+  :root { --topbar-height: 56px; }
+
+  .module-container { padding: 0.625rem; }
+  .topbar { padding: 0 0.625rem; gap: 0.375rem; }
+
+  .page-title { font-size: 0.9rem; }
+  .page-subtitle { display: none !important; }
+
+  /* Botones del topbar más compactos */
+  #topbar-actions .btn {
+    padding: 0.3rem 0.55rem;
+    font-size: 0.75rem;
+    gap: 0.25rem;
+  }
+  #topbar-actions .btn svg { width: 12px; height: 12px; }
+
+  /* Sidebar ocupa todo el ancho */
+  .sidebar { width: 100% !important; }
+
+  /* Kanban de metas a 1 columna */
+  [style*="grid-template-columns:repeat(4"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Modales a pantalla completa */
+  .modal-overlay { padding: 0.5rem; align-items: flex-end; }
+  .modal, .modal.modal-lg, .modal.modal-xl {
+    max-width: 100%;
+    max-height: 95vh;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+  }
+}
+
+/* ── Pantallas muy pequeñas (≤ 360px) ── */
+@media (max-width: 360px) {
+  .module-container { padding: 0.5rem; }
+  .topbar { padding: 0 0.5rem; }
+  .page-title { font-size: 0.825rem; }
+
+  /* Ocultar texto de botones de acción, dejar solo el ícono */
+  #topbar-actions .btn {
+    padding: 0.35rem 0.45rem;
+  }
+
+  .stat-value { font-size: 1.35rem; }
+  .card-header { padding: 0.75rem; }
+  .card-body { padding: 0.75rem; }
+}
+
+/* ── Pantallas grandes (≥ 1440px) ── */
+@media (min-width: 1440px) {
+  :root { --sidebar-width: 260px; }
+}
+
+/* ── Pantallas muy grandes (≥ 1920px) ── */
+@media (min-width: 1920px) {
+  :root {
+    --sidebar-width: 280px;
+    --content-max-width: 1600px;
+  }
+  .grid-4 { grid-template-columns: repeat(5, 1fr); }
+}
+
+/* ── Ultra ancho (≥ 2400px) ── */
+@media (min-width: 2400px) {
+  :root { --content-max-width: 2000px; }
+  html { font-size: 16px; }
 }

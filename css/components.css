@@ -1178,6 +1178,51 @@ input[type="file"].file-input::file-selector-button:hover {
   letter-spacing: 0.05em;
 }
 
+/* ── Responsive — Mobile adjustments ── */
+@media (max-width: 768px) {
+  /* Stat cards: layout horizontal compacto */
+  .stat-card { padding: 0.875rem; gap: 0.625rem; }
+  .stat-value { font-size: 1.5rem; }
+
+  /* Notas: 1 columna */
+  .grid-2#notes-grid { grid-template-columns: 1fr; }
+
+  /* Tabla scrolleable como bloque */
+  .table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table thead, .table tbody, .table tr { display: table; width: 100%; table-layout: fixed; }
+  .table thead { display: table-header-group; }
+
+  /* Toggle group más compacto */
+  .toggle-btn { padding: 0.35rem 0.65rem; font-size: 0.78rem; }
+
+  /* Chips/tags: wrap */
+  .chips { flex-wrap: wrap; }
+
+  /* Patient card en lista: ocultar acciones siempre visible */
+  .patient-card:hover .patient-actions { opacity: 1; }
+  .patient-actions { opacity: 1; }
+}
+
+@media (max-width: 480px) {
+  .card { border-radius: var(--radius); }
+  .card-header { padding: 0.75rem 0.875rem; gap: 0.5rem; flex-wrap: wrap; }
+  .card-title { font-size: 0.875rem; }
+  .card-body { padding: 0.875rem; }
+  .modal-header, .modal-body, .modal-footer { padding: 1rem; }
+  .form-group { margin-bottom: 0.75rem; }
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .form-row, .form-row-3, .grid-2 { grid-template-columns: 1fr; }
+  .btn { font-size: 0.825rem; }
+  .badge { font-size: 0.7rem; }
+
+  /* Timeline más compacto */
+  .timeline-item { padding: 0.5rem 0.625rem; gap: 0.5rem; }
+  .timeline-title { font-size: 0.825rem; }
+
+  /* Patient actions siempre visibles en móvil */
+  .patient-actions { opacity: 1 !important; }
+}
+
 /* ── PRINT ── */
 @media print {
   .sidebar, .topbar, .btn, #toast-container, .toolbar, .card:not(.report-wrapper), 
