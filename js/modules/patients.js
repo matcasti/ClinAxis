@@ -111,11 +111,16 @@ const PatientsModule = (() => {
       </div>
 
       <div class="tabs mb-4">
-        <button class="tab active" onclick="PatientsModule.switchTab(this,'tab-evals')">Evaluaciones (${evals.length})</button>
+        <button class="tab active" onclick="PatientsModule.switchTab(this,'tab-timeline')">Cronología</button>
+        <button class="tab" onclick="PatientsModule.switchTab(this,'tab-evals')">Evaluaciones (${evals.length})</button>
         <button class="tab" onclick="PatientsModule.switchTab(this,'tab-notes')">Notas (${notes.length})</button>
       </div>
-
-      <div id="tab-evals">
+      
+      <div id="tab-timeline">
+        ${await buildTimeline(id, evals, notes)}
+      </div>
+      
+      <div id="tab-evals" class="hidden">
         ${evals.length ? evals.sort((a,b)=>b.createdAt-a.createdAt).map(e => `
           <div class="timeline-item">
             <div class="timeline-dot dot-primary"></div>
@@ -125,7 +130,7 @@ const PatientsModule = (() => {
             </div>
           </div>`).join('') : '<p class="text-muted">Sin evaluaciones</p>'}
       </div>
-
+      
       <div id="tab-notes" class="hidden">
         ${notes.length ? notes.sort((a,b)=>b.createdAt-a.createdAt).map(n => `
           <div class="timeline-item">
@@ -232,6 +237,40 @@ const PatientsModule = (() => {
     _patients.sort((a,b) => Utils.patientLabel(a).localeCompare(Utils.patientLabel(b)));
     Utils.toast('Paciente eliminado', 'info');
     renderList(document.getElementById('module-container'));
+  }
+  
+  async function buildTimeline(patientId, evals, notes) {
+    // Merge all events
+    const vitals = (await DB.getAll('vitals')).filter(v => v.patientId === patientId);
+    const goals  = (await DB.getAll('goals')).filter(g => g.patientId === patientId);
+    const rems   = (await DB.getAll('reminders')).filter(r => r.patientId === patientId);
+  
+    const events = [
+      ...evals.map(e => ({ date: e.date, type: 'eval', icon: 'dot-primary', label: e.title||'Evaluación', sub: `${(e.instruments||[]).length} instrumento(s)` })),
+      ...notes.map(n => ({ date: n.date, type: 'note', icon: 'dot-accent', label: n.title||'Nota', sub: Utils.truncate(n.content,60) })),
+      ...vitals.map(v => ({ date: v.datetime?.split('T')[0]||'', type: 'vital', icon: 'dot-neutral', label: 'Signos vitales', sub: Object.entries(v.values||{}).map(([k,v2])=>k+': '+v2).join(' · ') })),
+      ...goals.map(g => ({ date: g.createdAt ? new Date(g.createdAt).toISOString().split('T')[0] : '', type: 'goal', icon: 'dot-primary', label: 'Meta: '+g.title, sub: `${g.progress}% — ${g.status}` })),
+      ...rems.map(r => ({ date: r.date, type: 'reminder', icon: r.completed?'dot-neutral':'dot-accent', label: r.title, sub: r.completed?'Completado':'Recordatorio' })),
+    ].filter(e => e.date).sort((a,b) => b.date.localeCompare(a.date));
+  
+    if (!events.length) return '<p class="text-muted">Sin actividad registrada</p>';
+  
+    let currentMonth = '';
+    return events.map(ev => {
+      const month = ev.date.slice(0,7);
+      const monthHeader = month !== currentMonth
+        ? `<div class="text-xs fw-600 text-muted mb-1 mt-3" style="text-transform:uppercase;letter-spacing:.05em">${new Date(month+'-01T12:00:00').toLocaleString('es-ES',{month:'long',year:'numeric'})}</div>`
+        : '';
+      currentMonth = month;
+      return `${monthHeader}
+        <div class="timeline-item">
+          <div class="timeline-dot ${ev.icon}"></div>
+          <div class="timeline-content">
+            <div class="timeline-title">${ev.label}</div>
+            <div class="timeline-meta">${Utils.formatDate(ev.date)} ${ev.sub?'· '+ev.sub:''}</div>
+          </div>
+        </div>`;
+    }).join('');
   }
 
   return { render, openDetail, openEdit, deletePatient, switchTab };

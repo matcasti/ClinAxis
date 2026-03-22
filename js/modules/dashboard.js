@@ -5,11 +5,14 @@
 const DashboardModule = (() => {
 
   async function render(container) {
-    const [patients, evaluations, reminders, notes] = await Promise.all([
+    
+    const [patients, evaluations, reminders, notes, goals, vitals] = await Promise.all([
       DB.getAll('patients'),
       DB.getAll('evaluations'),
       DB.getAll('reminders'),
       DB.getAll('notes'),
+      DB.getAll('goals'),
+      DB.getAll('vitals'),
     ]);
 
     const today = Utils.todayISO();
@@ -35,6 +38,25 @@ const DashboardModule = (() => {
         ${statCard(Utils.icon.reminders, 'Recordatorios', upcomingReminders.length, overdueReminders.length + ' vencidos', overdueReminders.length ? 'danger' : 'neutral')}
         ${statCard(Utils.icon.notes, 'Notas', notes.length, 'Registro clínico', 'neutral')}
       </div>
+      
+      ${(() => {
+        const alerts = [];
+        // Pacientes sin evaluación en 30 días
+        const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate()-30);
+        const thirtyISO = thirtyDaysAgo.toISOString().split('T')[0];
+        const patientsWithRecentEval = new Set(evaluations.filter(e=>e.date>=thirtyISO).map(e=>e.patientId));
+        const inactivePatients = patients.filter(p => !patientsWithRecentEval.has(p.id) && p.createdAt < thirtyDaysAgo.getTime());
+        if (inactivePatients.length) alerts.push(`${inactivePatients.length} paciente(s) sin evaluación en los últimos 30 días`);
+        // Metas vencidas sin lograr
+        const overdueGoals = goals.filter(g => g.status==='Activo' && g.targetDate && g.targetDate < Utils.todayISO());
+        if (overdueGoals.length) alerts.push(`${overdueGoals.length} meta(s) con plazo vencido`);
+      
+        if (!alerts.length) return '';
+        return `<div class="card mb-4 border-danger">
+          <div class="card-header"><h3 class="card-title text-danger">⚠ Alertas clínicas</h3></div>
+          ${alerts.map(a=>`<div class="timeline-item"><div class="timeline-dot dot-danger"></div><div class="timeline-content"><div class="timeline-title text-sm">${a}</div></div></div>`).join('')}
+        </div>`;
+      })()}
 
       <div class="grid-2 mb-6">
         <!-- Activity chart -->

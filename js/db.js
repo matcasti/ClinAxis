@@ -14,6 +14,8 @@ const DB = (() => {
     templates:   { keyPath: 'id', indexes: [['category','category']] },
     notes:       { keyPath: 'id', indexes: [['patientId','patientId'],['date','date']] },
     reminders:   { keyPath: 'id', indexes: [['date','date']] },
+    vitals:      { keyPath: 'id', indexes: [['patientId','patientId'],['date','date']] },
+    goals:       { keyPath: 'id', indexes: [['patientId','patientId'],['status','status']] },
     settings:    { keyPath: 'id' }
   };
 

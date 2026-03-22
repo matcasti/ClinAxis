@@ -358,6 +358,8 @@ const Utils = {
     patients: `<svg viewBox="0 0 20 20" fill="none"><circle cx="8" cy="6" r="3.25" stroke="currentColor" stroke-width="1.5"/><path d="M2 17c0-3.314 2.686-5.5 6-5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="15" cy="14" r="3.25" stroke="currentColor" stroke-width="1.5"/><path d="M15 12v2h1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
     evaluations: `<svg viewBox="0 0 20 20" fill="none"><rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M7 7h6M7 10h4M7 13h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
     monitoring: `<svg viewBox="0 0 20 20" fill="none"><polyline points="2,14 6,8 10,11 14,5 18,9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 18h16" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>`,
+    vitals: `<svg viewBox="0 0 20 20" fill="none"><path d="M2 10h3l2-6 3 12 2-8 2 4h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    goals: `<svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="10" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M10 2v2M18 10h-2M10 18v-2M2 10h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
     notes: `<svg viewBox="0 0 20 20" fill="none"><path d="M4 3h12a1 1 0 011 1v9l-4 4H4a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5"/><path d="M13 3v5l4 0" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M6 8h4M6 11h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
     instruments: `<svg viewBox="0 0 20 20" fill="none"><path d="M4 15l8-8m0 0l1.5-1.5A2.121 2.121 0 0116.5 8.5l.5.5a2.121 2.121 0 010 3L15.5 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M4 15l1.5 1.5L7 18l3-3-3-3-3 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>`,
     templates: `<svg viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="16" height="4" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="2" y="9" width="7" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="9" width="7" height="4" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M11 16h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
@@ -384,5 +386,20 @@ const Utils = {
   debounce(fn, delay = 300) {
     let t;
     return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
+  },
+  
+  async globalSearch(query) {
+    if (!query || query.length < 2) return {};
+    const q = query.toLowerCase();
+    const [patients, notes, evals, reminders] = await Promise.all([
+      DB.getAll('patients'), DB.getAll('notes'),
+      DB.getAll('evaluations'), DB.getAll('reminders'),
+    ]);
+    return {
+      patients: patients.filter(p => Utils.patientLabel(p).toLowerCase().includes(q)).slice(0,4),
+      notes: notes.filter(n => (n.title||'').toLowerCase().includes(q)||(n.content||'').toLowerCase().includes(q)).slice(0,4),
+      evals: evals.filter(e => (e.title||'').toLowerCase().includes(q)).slice(0,4),
+      reminders: reminders.filter(r => r.title.toLowerCase().includes(q)).slice(0,3),
+    };
   }
 };

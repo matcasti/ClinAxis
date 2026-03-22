@@ -165,6 +165,12 @@ const NotesModule = (() => {
         <label class="form-label">Contenido</label>
         <textarea class="form-input" id="note-content" rows="8" placeholder="Escribe tu nota clínica…">${existing?.content||''}</textarea>
       </div>
+      <div class="form-group mt-2">
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-ai-draft" style="color:var(--color-accent)">
+          ✨ Generar borrador con IA
+        </button>
+        <div id="ai-draft-status" class="text-xs text-muted mt-1"></div>
+      </div>
       <div class="form-group">
         <label class="form-label">Etiquetas (separadas por coma)</label>
         <input type="text" class="form-input" id="note-tags" placeholder="ej: seguimiento, dolor, funcional" value="${(existing?.tags||[]).join(', ')}">
@@ -193,6 +199,51 @@ const NotesModule = (() => {
       Utils.closeLargeModal();
       Utils.toast(existing ? 'Nota actualizada' : 'Nota registrada', 'success');
       renderList(document.getElementById('module-container'));
+    });
+    
+    document.getElementById('btn-ai-draft')?.addEventListener('click', async () => {
+      const patientId = document.getElementById('note-patient').value;
+      const type = document.getElementById('note-type').value;
+      if (!patientId) { Utils.toast('Selecciona un paciente primero', 'warning'); return; }
+    
+      const statusEl = document.getElementById('ai-draft-status');
+      const btn = document.getElementById('btn-ai-draft');
+      btn.disabled = true;
+      statusEl.textContent = 'Generando borrador…';
+    
+      // Gather context
+      const p = _patients.find(x => x.id === patientId);
+      const recentEvals = (await DB.getByIndex('evaluations', 'patientId', patientId))
+        .sort((a,b)=>b.createdAt-a.createdAt).slice(0,2);
+      const recentNotes = (await DB.getByIndex('notes', 'patientId', patientId))
+        .sort((a,b)=>b.createdAt-a.createdAt).slice(0,1);
+    
+      const context = `
+    Paciente: ${Utils.patientLabel(p)}
+    Tipo de nota: ${type || 'Evolución'}
+    Evaluaciones recientes: ${JSON.stringify(recentEvals.map(e=>({title:e.title,date:e.date,instruments:e.instruments?.map(i=>({name:i.instrumentName,values:i.values}))})))}
+    Nota previa: ${recentNotes[0]?.content||'Ninguna'}
+    `.trim();
+    
+      try {
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 1000,
+            system: 'Eres un asistente clínico. Genera notas de evolución profesionales, concisas y en español. Usa formato SOAP si aplica. Solo devuelve el texto de la nota, sin explicaciones.',
+            messages: [{ role: 'user', content: `Genera una nota clínica de tipo "${type||'evolución'}" con esta información:\n${context}` }],
+          }),
+        });
+        const data = await response.json();
+        const draft = data.content?.[0]?.text || '';
+        document.getElementById('note-content').value = draft;
+        statusEl.textContent = 'Borrador generado. Revisa y edita antes de guardar.';
+      } catch(e) {
+        statusEl.textContent = 'Error al generar: ' + e.message;
+      }
+      btn.disabled = false;
     });
   }
 

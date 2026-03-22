@@ -7,10 +7,12 @@ const App = (() => {
   let currentModule = null;
 
   const NAV_ITEMS = [
-    { id: 'dashboard',    label: 'Dashboard',       icon: 'dashboard',    module: () => DashboardModule },
+    { id: 'dashboard',    label: 'Dashboard',        icon: 'dashboard',    module: () => DashboardModule },
     { id: 'patients',     label: 'Pacientes',        icon: 'patients',     module: () => PatientsModule },
     { id: 'evaluations',  label: 'Evaluaciones',     icon: 'evaluations',  module: () => EvaluationsModule },
     { id: 'monitoring',   label: 'Monitoreo',        icon: 'monitoring',   module: () => MonitoringModule },
+    { id: 'vitals',       label: 'Signos Vitales',   icon: 'vitals',       module: () => VitalsModule },
+    { id: 'goals',        label: 'Metas',            icon: 'goals',        module: () => GoalsModule },
     { id: 'notes',        label: 'Notas',            icon: 'notes',        module: () => NotesModule },
     null,
     { id: 'instruments',  label: 'Instrumentos',     icon: 'instruments',  module: () => InstrumentsModule },
@@ -148,6 +150,61 @@ const App = (() => {
         document.getElementById('confirm-overlay').classList.add('hidden');
       }
     });
+
+    // Global search (Cmd/Ctrl+K)
+    document.addEventListener('keydown', e => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        document.getElementById('search-overlay').classList.toggle('hidden');
+        if (!document.getElementById('search-overlay').classList.contains('hidden')) {
+          setTimeout(() => document.getElementById('global-search-input').focus(), 50);
+        }
+      }
+    });
+    
+    document.getElementById('search-overlay').addEventListener('click', e => {
+      if (e.target === document.getElementById('search-overlay'))
+        document.getElementById('search-overlay').classList.add('hidden');
+    });
+    
+    const searchInput = document.getElementById('global-search-input');
+    searchInput.addEventListener('input', Utils.debounce(async e => {
+      const results = await Utils.globalSearch(e.target.value);
+      const container = document.getElementById('global-search-results');
+      if (!e.target.value) { container.innerHTML = ''; return; }
+    
+      const allPatients = await DB.getAll('patients');
+      const pName = (id) => { const p = allPatients.find(x=>x.id===id); return p?Utils.patientLabel(p):''; };
+    
+      let html = '';
+      if (results.patients?.length) {
+        html += `<div class="text-xs fw-600 text-muted px-1 mb-1 mt-2">PACIENTES</div>`;
+        html += results.patients.map(p => `
+          <div class="search-result-item" onclick="App.navigateTo('patients');document.getElementById('search-overlay').classList.add('hidden')">
+            <div class="patient-avatar" style="width:28px;height:28px;font-size:.7rem">${Utils.initials(Utils.patientLabel(p))}</div>
+            <div><div class="text-sm fw-600">${Utils.patientLabel(p)}</div></div>
+          </div>`).join('');
+      }
+      if (results.notes?.length) {
+        html += `<div class="text-xs fw-600 text-muted px-1 mb-1 mt-2">NOTAS</div>`;
+        html += results.notes.map(n => `
+          <div class="search-result-item" onclick="App.navigateTo('notes');document.getElementById('search-overlay').classList.add('hidden')">
+            ${Utils.icon.notes}
+            <div><div class="text-sm fw-600">${Utils.truncate(n.title||'Nota',40)}</div>
+            <div class="text-xs text-muted">${pName(n.patientId)} · ${Utils.formatDate(n.date)}</div></div>
+          </div>`).join('');
+      }
+      if (results.evals?.length) {
+        html += `<div class="text-xs fw-600 text-muted px-1 mb-1 mt-2">EVALUACIONES</div>`;
+        html += results.evals.map(ev => `
+          <div class="search-result-item" onclick="App.navigateTo('evaluations');document.getElementById('search-overlay').classList.add('hidden')">
+            ${Utils.icon.evaluations}
+            <div><div class="text-sm fw-600">${Utils.truncate(ev.title||'Evaluación',40)}</div>
+            <div class="text-xs text-muted">${pName(ev.patientId)} · ${Utils.formatDate(ev.date)}</div></div>
+          </div>`).join('');
+      }
+      container.innerHTML = html || `<div class="text-muted text-sm p-4 text-center">Sin resultados para "${e.target.value}"</div>`;
+    }, 200));
   }
 
   return { init, navigateTo, getCurrentModule: () => currentModule };

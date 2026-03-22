@@ -1161,3 +1161,15 @@ select.form-input,
 @media (max-width: 600px) {
   .grid-4 { grid-template-columns: 1fr; }
 }
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: .625rem;
+  padding: .5rem .75rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.search-result-item:hover { background: var(--surface-2); }
+.search-result-item svg { width: 16px; height: 16px; color: var(--text-3); flex-shrink: 0; }
