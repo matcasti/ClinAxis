@@ -119,7 +119,7 @@ const History360Module = (() => {
       </div>
 
       <!-- Tabs -->
-      <div class="tabs mb-0" id="h360-tabs">
+      <div class="tabs " id="h360-tabs">
         <button class="tab active" onclick="History360Module._tab(this,'h360-timeline')">
           ${Utils.icon.evaluations} Cronología
         </button>

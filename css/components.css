@@ -663,6 +663,7 @@ input[type="file"].file-input::file-selector-button:hover {
   border-bottom: 1px solid var(--border);
   margin-bottom: 1.25rem;
   overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .tab {
