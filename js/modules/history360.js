@@ -106,9 +106,6 @@ const History360Module = (() => {
               ${_statPill(activeMeds.length,  'Medicamentos', 'neutral')}
             </div>
             <div class="flex gap-2">
-              <button class="btn btn-ghost btn-sm" onclick="History360Module._aiSummary()">
-                ✨ Resumen IA
-              </button>
               <button class="btn btn-primary btn-sm"
                 onclick="App.navigateTo('evaluations')">
                 ${Utils.icon.plus} Evaluación
@@ -117,9 +114,6 @@ const History360Module = (() => {
           </div>
         </div>
       </div>
-
-      <!-- AI Summary placeholder -->
-      <div id="ai-summary-area" class="hidden mb-4"></div>
 
       <!-- Tabs -->
       <div class="tabs mb-0" id="h360-tabs">
@@ -343,64 +337,5 @@ const History360Module = (() => {
       </tr>`).join('') + '</tbody></table></div>';
   }
 
-  /* ── AI Summary ── */
-  async function _aiSummary() {
-    const area = document.getElementById('ai-summary-area');
-    if (!area || !_selectedPatient) return;
-    area.classList.remove('hidden');
-    area.innerHTML = `<div class="card"><div class="card-body"><div class="spinner"></div><p class="text-muted text-sm text-center mt-2">Analizando historial clínico…</p></div></div>`;
-
-    const [p, evals, notes, goals, instruments] = await Promise.all([
-      DB.get('patients', _selectedPatient),
-      DB.getByIndex('evaluations','patientId', _selectedPatient),
-      DB.getByIndex('notes','patientId', _selectedPatient),
-      DB.getByIndex('goals','patientId', _selectedPatient),
-      DB.getAll('instruments'),
-    ]);
-
-    const evSorted = [...evals].sort((a,b) => a.date.localeCompare(b.date));
-    const scores   = {};
-    evSorted.forEach(ev => {
-      (ev.instruments||[]).forEach(id => {
-        const inst = instruments.find(i => i.id === id.instrumentId);
-        if (!inst) return;
-        const s = Utils.calcInstrumentScore(inst, id.values);
-        if (s === null) return;
-        if (!scores[id.instrumentName]) scores[id.instrumentName] = [];
-        scores[id.instrumentName].push({ date: ev.date, score: s });
-      });
-    });
-
-    const context = `
-Paciente: ${Utils.patientLabel(p)}
-Evaluaciones: ${evals.length}
-Scores por instrumento: ${JSON.stringify(scores, null, 2)}
-Metas activas: ${goals.filter(g=>g.status==='Activo').map(g=>`${g.title} (${g.progress}%)`).join('; ')||'Ninguna'}
-Última nota: ${[...notes].sort((a,b)=>b.createdAt-a.createdAt)[0]?.content?.slice(0,200)||'Ninguna'}
-`.trim();
-
-    try {
-      const text = await Utils.callClaude({
-        system: 'Eres un asistente clínico experto. Analiza el historial del paciente y proporciona: 1) Resumen de evolución clínica, 2) Tendencias observadas en los instrumentos, 3) Recomendaciones de seguimiento. Responde en español, de forma concisa y profesional. Usa formato con subtítulos.',
-        userMessage: `Analiza este historial:\n${context}`,
-        maxTokens: 1000,
-      });
-      area.innerHTML = `
-        <div class="card mb-4" style="border-color:var(--accent)">
-          <div class="card-header">
-            <h3 class="card-title" style="color:var(--accent)">✨ Análisis IA del Historial</h3>
-            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('ai-summary-area').classList.add('hidden')">Cerrar</button>
-          </div>
-          <div class="card-body"><div style="white-space:pre-wrap;line-height:1.7;font-size:.9rem">${text}</div></div>
-        </div>`;
-    } catch (e) {
-      if (e.message === 'no_key') {
-        Utils.showApiKeyBanner(area);
-      } else {
-        area.innerHTML = `<div class="card mb-4"><div class="card-body"><p class="text-danger">Error: ${e.message}</p></div></div>`;
-      }
-    }
-  }
-
-  return { render, openForPatient, _tab, _aiSummary };
+  return { render, openForPatient, _tab };
 })();

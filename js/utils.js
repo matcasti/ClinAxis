@@ -440,48 +440,4 @@ const Utils = {
       reminders: reminders.filter(r => r.title.toLowerCase().includes(q)).slice(0,3),
     };
   },
-
-  // ── Anthropic API (proxy) ──
-  async callClaude({ system, userMessage, maxTokens = 1000 }) {
-    const apiKey = await DB.getSetting('anthropic_api_key', '');
-    if (!apiKey) {
-      throw new Error('no_key');
-    }
-    const response = await fetch('/api/claude', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: maxTokens,
-        system,
-        messages: [{ role: 'user', content: userMessage }],
-      }),
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      const msg = data?.error?.message || data?.error || `Error ${response.status}`;
-      throw new Error(msg);
-    }
-    return data.content?.[0]?.text || '';
-  },
-
-  // Muestra el banner de configuración de API key
-  showApiKeyBanner(targetEl) {
-    if (targetEl) targetEl.innerHTML = `
-      <div class="card" style="border-color:var(--warning)">
-        <div class="card-body" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
-          <span style="font-size:1.25rem">🔑</span>
-          <div style="flex:1;min-width:0">
-            <div class="fw-600 text-sm">API key de Anthropic no configurada</div>
-            <div class="text-xs text-muted mt-1">Necesitas tu propia API key para usar las funciones de IA. Es gratuita para empezar en <strong>console.anthropic.com</strong></div>
-          </div>
-          <button class="btn btn-primary btn-sm" onclick="App.navigateTo('settings')">
-            Configurar API key
-          </button>
-        </div>
-      </div>`;
-  },
 };

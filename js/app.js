@@ -27,8 +27,6 @@ const App = (() => {
     { id: 'export',       label: 'Exportar Reporte', icon: 'reports',      module: () => ExportModule },
     null,
     { id: 'backup',       label: 'Respaldo',         icon: 'backup',       module: () => BackupModule },
-    null,
-    { id: 'settings',     label: 'Ajustes',          icon: 'instruments',  module: () => SettingsModule },
   ];
 
   async function init() {
@@ -236,7 +234,7 @@ const App = (() => {
       { icon: '📈', color: '#EFF6FF', title: 'Monitoreo de Evolución', desc: 'Gráficos de progreso individual y grupal con comparativas entre pacientes.' },
       { icon: '🎯', color: '#ECFDF5', title: 'Metas Terapéuticas', desc: 'Objetivos con actualización automática de progreso según evaluaciones.' },
       { icon: '🔔', color: '#FFFBEB', title: 'Alertas Inteligentes', desc: 'Detección automática de deterioro clínico, metas vencidas y signos críticos.' },
-      { icon: '✨', color: '#F5F3FF', title: 'Asistente IA Integrado', desc: 'Notas clínicas automatizadas, resúmenes de historial y análisis grupal.' },
+      { icon: '💾', color: '#F0FDF4', title: 'Privacidad Total', desc: 'Todo se almacena localmente en tu navegador. Sin servidores, sin internet requerido.' },
     ];
 
     const grid = document.getElementById('welcome-features-grid');
@@ -298,7 +296,7 @@ const App = (() => {
     }
   }
 
-  return { init, navigateTo, getCurrentModule: () => currentModule, loadSampleData, _setTheme: (t) => { applyTheme(t); DB.setSetting('theme', t); } };
+  return { init, navigateTo, getCurrentModule: () => currentModule, loadSampleData };
 })();
 
 // Bootstrap
