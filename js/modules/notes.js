@@ -134,7 +134,8 @@ const NotesModule = (() => {
     ]);
   }
 
-  async function openForm(id) {
+  async function openForm(id, onSaved) {
+    if (!_patients.length) _patients = await DB.getAll('patients');
     const existing = id ? await DB.get('notes', id) : null;
     const body = `
       <div class="grid-2 mb-3">
@@ -194,7 +195,8 @@ const NotesModule = (() => {
       _notes.sort((a,b) => b.createdAt - a.createdAt);
       Utils.closeLargeModal();
       Utils.toast(existing ? 'Nota actualizada' : 'Nota registrada', 'success');
-      renderList(document.getElementById('module-container'));
+      if (typeof onSaved === 'function') onSaved();
+      else renderList(document.getElementById('module-container'));
     });
   }
 

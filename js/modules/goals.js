@@ -62,7 +62,9 @@ const GoalsModule = (() => {
       </div>`;
   }
 
-  async function openForm(id) {
+  async function openForm(id, onSaved) {
+    if (!_patients.length || !_instruments.length)
+      [_patients, _instruments] = await Promise.all([DB.getAll('patients'), DB.getAll('instruments')]);
     const existing = id ? await DB.get('goals', id) : null;
     const body = `
       <div class="grid-2 mb-3">
@@ -146,7 +148,8 @@ const GoalsModule = (() => {
       _goals = await DB.getAll('goals');
       Utils.closeLargeModal();
       Utils.toast(existing ? 'Meta actualizada' : 'Meta registrada', 'success');
-      renderList(document.getElementById('module-container'));
+      if (typeof onSaved === 'function') onSaved();
+      else renderList(document.getElementById('module-container'));
     });
   }
 

@@ -148,7 +148,8 @@ const VitalsModule = (() => {
     }
   }
 
-  async function openForm(id) {
+  async function openForm(id, onSaved) {
+    if (!_patients.length) _patients = await DB.getAll('patients');
     const existing = id ? await DB.get('vitals', id) : null;
     const now = new Date();
     const localISO = new Date(now.getTime() - now.getTimezoneOffset()*60000).toISOString().slice(0,16);
@@ -202,7 +203,8 @@ const VitalsModule = (() => {
       _vitals = await DB.getAll('vitals');
       Utils.closeLargeModal();
       Utils.toast('Signos vitales registrados', 'success');
-      drawVitals();
+      if (typeof onSaved === 'function') onSaved();
+      else drawVitals();
     });
   }
 

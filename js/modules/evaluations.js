@@ -172,7 +172,11 @@ const EvaluationsModule = (() => {
   }
 
   // ── Form ──
-  async function openForm(id) {
+  async function openForm(id, onSaved) {
+    if (!_patients.length)
+      [_patients, _instruments, _packages] = await Promise.all([
+        DB.getAll('patients'), DB.getAll('instruments'), DB.getAll('assessmentPackages'),
+      ]);
     const existing = id ? await DB.get('evaluations', id) : null;
     let selectedInstruments = existing ? JSON.parse(JSON.stringify(existing.instruments || [])) : [];
 
@@ -291,7 +295,8 @@ const EvaluationsModule = (() => {
       _evals.sort((a,b) => b.date.localeCompare(a.date));
       Utils.closeLargeModal();
       Utils.toast(existing ? 'Evaluación actualizada' : 'Evaluación registrada', 'success');
-      renderList(document.getElementById('module-container'));
+      if (typeof onSaved === 'function') onSaved();
+      else renderList(document.getElementById('module-container'));
     });
 
     // Bind add instrument button

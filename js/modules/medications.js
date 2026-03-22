@@ -106,7 +106,8 @@ const MedicationsModule = (() => {
       </tr>`;
   }
 
-  async function openForm(id) {
+  async function openForm(id, onSaved) {
+    if (!_patients.length) _patients = await DB.getAll('patients');
     const existing = id ? await DB.get('medications', id) : null;
     const body = `
       <div class="grid-2 mb-3">
@@ -183,7 +184,8 @@ const MedicationsModule = (() => {
       _meds.sort((a, b) => b.createdAt - a.createdAt);
       Utils.closeModal();
       Utils.toast(existing ? 'Medicamento actualizado' : 'Medicamento registrado', 'success');
-      renderList(document.getElementById('module-container'));
+      if (typeof onSaved === 'function') onSaved();
+      else renderList(document.getElementById('module-container'));
     });
   }
 
