@@ -439,7 +439,7 @@ const Utils = {
       evals: evals.filter(e => (e.title||'').toLowerCase().includes(q)).slice(0,4),
       reminders: reminders.filter(r => r.title.toLowerCase().includes(q)).slice(0,3),
     };
-  }
+  },
 
   // ── Anthropic API (proxy) ──
   async callClaude({ system, userMessage, maxTokens = 1000 }) {
