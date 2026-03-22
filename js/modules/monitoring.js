@@ -11,12 +11,14 @@ const MonitoringModule = (() => {
   let _selectedPatient = null;
   let _selectedInstrument = null;
   let _selectedField = null;
+  let _vitals = [];
 
   async function render(container) {
-    [_patients, _instruments, _evals] = await Promise.all([
+    [_patients, _instruments, _evals, _vitals] = await Promise.all([
       DB.getAll('patients'),
       DB.getAll('instruments'),
       DB.getAll('evaluations'),
+      DB.getAll('vitals'),
     ]);
     _evals.sort((a,b) => a.date.localeCompare(b.date));
 
@@ -99,6 +101,7 @@ const MonitoringModule = (() => {
   function drawGlobalCharts() {
     Charts.destroyAll();
     const inst = _instruments.find(i => i.id === _selectedInstrument);
+    const numericFields = inst.fields.filter(f => ['number','slider','likert','select'].includes(f.type));
     if (!inst) return;
     const area = document.getElementById('global-charts-area');
     if (!area) return;
@@ -121,6 +124,20 @@ const MonitoringModule = (() => {
     });
 
     const patientIds = Object.keys(patientData);
+    // Recopilar datos por campo para el desglose
+    const patientFieldData = {};
+    _evals.forEach(ev => {
+      const instData = (ev.instruments||[]).find(i => i.instrumentId === _selectedInstrument);
+      if (!instData) return;
+      if (!patientFieldData[ev.patientId]) patientFieldData[ev.patientId] = {};
+      numericFields.forEach(f => {
+        const val = Utils.getNumericValue(f, instData.values?.[f.id]);
+        if (val !== null) {
+          if (!patientFieldData[ev.patientId][f.id]) patientFieldData[ev.patientId][f.id] = [];
+          patientFieldData[ev.patientId][f.id].push({ date: ev.date, val });
+        }
+      });
+    });
     if (!patientIds.length) {
       area.innerHTML = `<div class="empty-state">Sin datos para este instrumento</div>`;
       return;
@@ -150,7 +167,19 @@ const MonitoringModule = (() => {
           <thead><tr><th>Paciente</th><th>N° Evaluaciones</th><th>Primera</th><th>Última</th><th>Tendencia</th></tr></thead>
           <tbody></tbody>
         </table>
-      </div>`;
+      </div>
+      ${numericFields.length ? `
+      <div class="card mt-4">
+        <div class="card-header"><h3 class="card-title">Desglose por campo — todos los pacientes</h3></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:0.75rem;padding:1rem">
+          ${numericFields.map((f, fi) => `
+            <div>
+              <div class="text-xs fw-600 text-muted mb-1">${Utils.escapeHtml(f.name)}</div>
+              <div class="chart-wrap" style="height:150px"><canvas id="chart-global-field-${fi}"></canvas></div>
+            </div>`).join('')}
+        </div>
+      </div>` : ''}
+      `;
 
     const lineDatasets = [];
     const barLabels = [];
@@ -202,6 +231,24 @@ const MonitoringModule = (() => {
     Charts.line('chart-global-line', allDates.map(d => Utils.formatDateShort(d)), lineDatasets);
     Charts.bar('chart-global-bar', barLabels, [{ label: _selectedField === '__score__' ? 'Puntuación' : inst.fields.find(f=>f.id===_selectedField)?.name || '', data: barData }]);
     if (radarLabels.length >= 3) Charts.radar('chart-global-radar', radarLabels, radarDatasets);
+    // Gráficos de desglose por campo (todos los pacientes)
+    numericFields.forEach((f, fi) => {
+      const cid = `chart-global-field-${fi}`;
+      if (!document.getElementById(cid)) return;
+      const datasets = patientIds.map((pid, ci) => {
+        const pPts = patientFieldData[pid]?.[f.id] || [];
+        if (!pPts.length) return null;
+        const p = _patients.find(x => x.id === pid);
+        const color = Utils.chartColors[ci % Utils.chartColors.length];
+        return {
+          label: p ? Utils.patientLabel(p) : pid,
+          data: allDates.map(d => { const pt = pPts.find(pp => pp.date === d); return pt ? pt.val : null; }),
+          borderColor: color, backgroundColor: color + '22',
+          tension: 0.3, spanGaps: true, borderWidth: 1.5,
+        };
+      }).filter(Boolean);
+      if (datasets.length) Charts.line(cid, allDates.map(d => Utils.formatDateShort(d)), datasets);
+    });
   }
 
   // ── BY PATIENT VIEW ──
@@ -262,13 +309,29 @@ const MonitoringModule = (() => {
       const inst = _instruments.find(i => i.id === instId);
       if (!inst) return;
       const series = instMap[instId].sort((a,b) => a.date.localeCompare(b.date));
+      const hasScore = inst.scoring?.type && inst.scoring.type !== 'none';
       const scores = series.map(s => Utils.calcInstrumentScore(inst, s.values));
       const dates = series.map(s => Utils.formatDateShort(s.date));
-      const trend = scores.filter(s=>s!==null).length >= 2 ? Utils.getTrend(scores.filter(s=>s!==null), inst.scoring?.direction||'higher_better') : null;
+      const validScores = scores.filter(s => s !== null);
+      const trend = hasScore && validScores.length >= 2
+        ? Utils.getTrend(validScores, inst.scoring?.direction||'higher_better')
+        : null;
 
       const chartId = `chart-pt-${ci}`;
       const radarId = `chart-pt-radar-${ci}`;
       const numFields = inst.fields.filter(f => ['number','slider','likert','select'].includes(f.type));
+
+      const fieldGridHtml = numFields.length ? `
+        <div style="padding:0.5rem 1rem 1rem${hasScore?';border-top:1px solid var(--border)':''}">
+          <div class="text-xs fw-600 text-muted mb-2" style="text-transform:uppercase;letter-spacing:.04em">Campos individuales</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.75rem">
+            ${numFields.map((f, fi) => `
+              <div>
+                <div class="text-xs fw-600 text-muted mb-1">${Utils.escapeHtml(f.name)}</div>
+                <div class="chart-wrap" style="height:110px"><canvas id="chart-pt-field-${ci}-${fi}"></canvas></div>
+              </div>`).join('')}
+          </div>
+        </div>` : '';
 
       const sec = document.createElement('div');
       sec.className = 'card mb-4';
@@ -276,39 +339,93 @@ const MonitoringModule = (() => {
         <div class="card-header">
           <h4 class="card-title">${inst.name}</h4>
           <div class="flex gap-2">
-            ${trend ? `<span class="badge badge-${trend==='up'?'success':trend==='down'?'danger':'neutral'}">${Utils.trendIcon(trend)} ${trend==='up'?'Mejorando':trend==='down'?'Empeorando':'Estable'}</span>` : ''}
+            ${trend ? `<span class="badge badge-${trend==='better'?'success':trend==='worse'?'danger':'neutral'}">${Utils.trendIcon(trend)} ${trend==='better'?'Mejorando':trend==='worse'?'Empeorando':'Estable'}</span>` : ''}
             <span class="badge badge-neutral">${series.length} medición(es)</span>
           </div>
         </div>
+        ${hasScore ? `
         <div class="grid-2">
           <div class="chart-wrap" style="height:240px"><canvas id="${chartId}"></canvas></div>
-          ${numFields.length >= 3 ? `<div class="chart-wrap" style="height:240px"><canvas id="${radarId}"></canvas></div>` : 
+          ${numFields.length >= 3 ? `<div class="chart-wrap" style="height:240px"><canvas id="${radarId}"></canvas></div>` :
             `<div class="p-4">
               <table class="table">
                 <thead><tr><th>Fecha</th><th>Puntuación</th></tr></thead>
                 <tbody>${series.map((s,i) => `<tr><td>${Utils.formatDate(s.date)}</td><td><strong>${scores[i] ?? '—'}</strong></td></tr>`).join('')}</tbody>
               </table>
             </div>`}
-        </div>`;
+        </div>` : ''}
+        ${fieldGridHtml}`;
       sections.appendChild(sec);
 
-      // Draw charts after DOM insertion
-      Charts.line(chartId, dates, [{
-        label: inst.name,
-        data: scores,
-        tension: 0.3,
-      }]);
-
-      if (numFields.length >= 3) {
-        const radarDatasets = series.map((s, i) => ({
-          label: Utils.formatDateShort(s.date),
-          data: numFields.map(f => Utils.getNumericValue(f, s.values?.[f.id]) ?? 0),
-          borderColor: Utils.chartColors[i % Utils.chartColors.length],
-          backgroundColor: Utils.chartColors[i % Utils.chartColors.length] + '33',
-        })).slice(-3); // last 3 for readability
-        Charts.radar(radarId, numFields.map(f => f.name), radarDatasets);
+      // Gráfico puntuación total
+      if (hasScore) {
+        Charts.line(chartId, dates, [{ label: inst.name, data: scores, tension: 0.3 }]);
+        if (numFields.length >= 3) {
+          const radarDatasets = series.map((s, i) => ({
+            label: Utils.formatDateShort(s.date),
+            data: numFields.map(f => Utils.getNumericValue(f, s.values?.[f.id]) ?? 0),
+            borderColor: Utils.chartColors[i % Utils.chartColors.length],
+            backgroundColor: Utils.chartColors[i % Utils.chartColors.length] + '33',
+          })).slice(-3);
+          Charts.radar(radarId, numFields.map(f => f.name), radarDatasets);
+        }
       }
+
+      // Mini gráficos de campos individuales
+      numFields.forEach((f, fi) => {
+        const fPts = series
+          .map(s => ({ date: s.date, val: Utils.getNumericValue(f, s.values?.[f.id]) }))
+          .filter(p => p.val !== null);
+        if (!fPts.length) return;
+        Charts.mini(`chart-pt-field-${ci}-${fi}`, {
+          labels: fPts.map(p => Utils.formatDateShort(p.date)),
+          data: fPts.map(p => p.val),
+          direction: f.direction || inst.scoring?.direction || 'neutral',
+        });
+      });
     });
+
+    // ── Signos vitales del paciente ──
+    const patientVitals = _vitals
+      .filter(v => v.patientId === _selectedPatient)
+      .sort((a,b) => a.datetime.localeCompare(b.datetime));
+    if (patientVitals.length) {
+      const VITAL_LABELS = { sbp:'PAS (mmHg)', dbp:'PAD (mmHg)', hr:'FC (lpm)', spo2:'SpO₂ (%)', temp:'Temp (°C)', rr:'FR (rpm)', weight:'Peso (kg)', glucose:'Glucosa (mg/dL)' };
+      const VITAL_DIRECTION = { sbp:'neutral', dbp:'neutral', hr:'neutral', spo2:'higher_better', temp:'neutral', rr:'neutral', weight:'neutral', glucose:'lower_better' };
+      const usedKeys = Object.keys(VITAL_LABELS).filter(k =>
+        patientVitals.some(v => v.values?.[k] !== undefined && v.values?.[k] !== '')
+      );
+      if (usedKeys.length) {
+        const vSec = document.createElement('div');
+        vSec.className = 'card mb-4';
+        vSec.innerHTML = `
+          <div class="card-header">
+            <h4 class="card-title">${Utils.icon.vitals} Signos Vitales</h4>
+            <span class="badge badge-neutral">${patientVitals.length} registro(s)</span>
+          </div>
+          <div style="padding:0.5rem 1rem 1rem">
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.75rem">
+              ${usedKeys.map(k => `
+                <div>
+                  <div class="text-xs fw-600 text-muted mb-1">${VITAL_LABELS[k]}</div>
+                  <div class="chart-wrap" style="height:110px"><canvas id="chart-pt-vital-${k}"></canvas></div>
+                </div>`).join('')}
+            </div>
+          </div>`;
+        sections.appendChild(vSec);
+        usedKeys.forEach(k => {
+          const pts = patientVitals
+            .filter(v => v.values?.[k] !== undefined && v.values?.[k] !== '')
+            .map(v => ({ date: v.datetime.split('T')[0], val: parseFloat(v.values[k]) }));
+          if (!pts.length) return;
+          Charts.mini(`chart-pt-vital-${k}`, {
+            labels: pts.map(p => Utils.formatDateShort(p.date)),
+            data: pts.map(p => p.val),
+            direction: VITAL_DIRECTION[k],
+          });
+        });
+      }
+    }
   }
 
   return { render, setView };

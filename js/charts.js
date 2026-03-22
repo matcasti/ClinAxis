@@ -265,5 +265,69 @@ const Charts = {
       <polyline points="${points}" stroke="${strokeColor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
       <circle cx="${xs[xs.length-1]}" cy="${ys[ys.length-1]}" r="2.5" fill="${strokeColor}"/>
     </svg>`;
+  },
+
+  // ── Mini chart — línea compacta de un solo dataset para campos individuales ──
+  mini(canvasId, { labels = [], data = [], color, direction = 'neutral', yLabel = '' } = {}) {
+    Charts.destroy(canvasId);
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const { gridColor, tickColor } = Charts._baseOptions();
+    const isDark = document.documentElement.dataset.theme === 'dark';
+
+    const nonNull = data.filter(d => d !== null && d !== undefined);
+    const trend = nonNull.length >= 2 ? Utils.getTrend(nonNull, direction) : null;
+    const c = color || (
+      trend === 'better' ? '#10B981' :
+      trend === 'worse'  ? '#EF4444' : '#6366F1'
+    );
+
+    Charts._instances[canvasId] = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          data,
+          borderColor: c,
+          backgroundColor: c + '18',
+          tension: 0.4,
+          pointRadius: labels.length > 5 ? 2 : 3,
+          pointHoverRadius: 5,
+          fill: true,
+          borderWidth: 1.5,
+          spanGaps: true,
+          pointBackgroundColor: c,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: isDark ? '#1A2236' : '#0F172A',
+            titleColor: '#F1F5F9',
+            bodyColor: '#94A3B8',
+            padding: 6,
+            callbacks: {
+              label: ctx => ` ${ctx.parsed.y}${yLabel ? ' ' + yLabel : ''}`
+            }
+          }
+        },
+        scales: {
+          x: {
+            ticks: { color: tickColor, font: { size: 9, family: "'Source Sans 3', sans-serif" }, maxRotation: 0, maxTicksLimit: 4 },
+            grid: { display: false }
+          },
+          y: {
+            ticks: { color: tickColor, font: { size: 9, family: "'Source Sans 3', sans-serif" }, maxTicksLimit: 3 },
+            grid: { color: gridColor }
+          }
+        }
+      }
+    });
+    return Charts._instances[canvasId];
   }
 };

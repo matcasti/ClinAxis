@@ -8,6 +8,7 @@ const History360Module = (() => {
   let _patients = [];
   let _pendingEvSorted = [];
   let _pendingInstruments = [];
+  let _pendingVitals = [];
   let _lastContainer = null;
 
   /* Punto de entrada desde tarjeta de paciente */
@@ -150,7 +151,7 @@ const History360Module = (() => {
         ${_buildEvaluations(evSorted, instruments)}
       </div>
       <div id="h360-evolution" class="h360-panel hidden">
-        ${_buildEvolutionPlaceholder(evSorted, instruments)}
+        ${_buildEvolutionPlaceholder(evSorted, instruments, vitals)}
       </div>
       <div id="h360-notes" class="h360-panel hidden">
         ${_buildNotes(notes)}
@@ -169,6 +170,7 @@ const History360Module = (() => {
     // Draw evolution charts after DOM ready
     _pendingEvSorted = evSorted;
     _pendingInstruments = instruments;
+    _pendingVitals = vitals;
   }
 
   /* ── Helpers UI ── */
@@ -187,8 +189,11 @@ const History360Module = (() => {
     document.querySelectorAll('.h360-panel').forEach(d => d.classList.add('hidden'));
     document.getElementById(panelId)?.classList.remove('hidden');
     // Draw evolution charts lazily — canvas must be visible (non-zero dimensions) for Chart.js
-    if (panelId === 'h360-evolution' && _pendingEvSorted.length) {
-      setTimeout(() => _drawEvolutionCharts(_pendingEvSorted, _pendingInstruments), 50);
+    if (panelId === 'h360-evolution') {
+      setTimeout(() => {
+        if (_pendingEvSorted.length) _drawEvolutionCharts(_pendingEvSorted, _pendingInstruments);
+        _drawVitalsEvolution(_pendingVitals);
+      }, 50);
     }
   }
 
@@ -224,56 +229,123 @@ const History360Module = (() => {
     }).join('') + `</div></div>`;
   }
 
-  /* ── Evolution charts ── */
-  function _buildEvolutionPlaceholder(evSorted, instruments) {
+  /* ── Evolution placeholder: score + campos individuales + vitales ── */
+  function _buildEvolutionPlaceholder(evSorted, instruments, vitals) {
+    const VITAL_LABELS = { sbp:'PAS (mmHg)', dbp:'PAD (mmHg)', hr:'FC (lpm)', spo2:'SpO₂ (%)', temp:'Temp (°C)', rr:'FR (rpm)', weight:'Peso (kg)', glucose:'Glucosa (mg/dL)' };
+
+    // Recopila instrumentos con puntuación o campos numéricos
     const instMap = {};
     evSorted.forEach(ev => {
-      (ev.instruments||[]).forEach(id => {
-        const inst = instruments.find(i => i.id === id.instrumentId);
-        if (!inst || inst.scoring?.type === 'none') return;
-        if (!instMap[inst.id]) instMap[inst.id] = { name: id.instrumentName, count: 0 };
+      (ev.instruments||[]).forEach(ir => {
+        const inst = instruments.find(i => i.id === ir.instrumentId);
+        if (!inst) return;
+        const numFields = (inst.fields||[]).filter(f => ['number','slider','likert','select'].includes(f.type));
+        const hasScore = inst.scoring?.type && inst.scoring.type !== 'none';
+        if (!hasScore && !numFields.length) return;
+        if (!instMap[inst.id]) instMap[inst.id] = { name: ir.instrumentName, count: 0, inst, hasScore, numFields };
         instMap[inst.id].count++;
       });
     });
-    const keys = Object.keys(instMap);
-    if (!keys.length) return '<div class="empty-state" style="padding:2rem"><p class="text-muted">Sin datos de instrumentos con puntuación</p></div>';
-    return keys.map((instId, ci) =>
-      `<div class="card mb-4 chart-card">
-         <div class="card-header">
-           <h4 class="card-title">${instMap[instId].name}</h4>
-           <span class="badge badge-neutral">${instMap[instId].count} medición(es)</span>
-         </div>
-         <div class="chart-wrap" style="height:220px"><canvas id="h360-chart-${instId.replace(/-/g,'_')}"></canvas></div>
-       </div>`
-    ).join('');
+
+    const usedVitalKeys = Object.keys(VITAL_LABELS).filter(k =>
+      (vitals||[]).some(v => v.values?.[k] !== undefined && v.values?.[k] !== '')
+    );
+
+    if (!Object.keys(instMap).length && !usedVitalKeys.length) {
+      return '<div class="empty-state" style="padding:2rem"><p class="text-muted">Sin datos de instrumentos ni signos vitales para graficar</p></div>';
+    }
+
+    const instHtml = Object.entries(instMap).map(([, { name, count, inst, hasScore, numFields }], ci) => `
+      <div class="card mb-4 chart-card">
+        <div class="card-header">
+          <h4 class="card-title">${name}</h4>
+          <span class="badge badge-neutral">${count} medición(es)</span>
+        </div>
+        ${hasScore ? `<div class="chart-wrap" style="height:190px"><canvas id="h360-chart-${ci}"></canvas></div>` : ''}
+        ${numFields.length ? `
+          <div style="padding:0.5rem 1rem 1rem${hasScore ? ';border-top:1px solid var(--border)' : ''}">
+            ${hasScore ? `<div class="text-xs fw-600 text-muted mb-2" style="text-transform:uppercase;letter-spacing:.04em">Campos individuales</div>` : ''}
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.75rem">
+              ${numFields.map((f, fi) => `
+                <div>
+                  <div class="text-xs fw-600 text-muted mb-1">${Utils.escapeHtml(f.name)}</div>
+                  <div class="chart-wrap" style="height:110px"><canvas id="h360-field-${ci}-${fi}"></canvas></div>
+                </div>`).join('')}
+            </div>
+          </div>` : ''}
+      </div>`).join('');
+
+    const vitalsHtml = usedVitalKeys.length ? `
+      <div class="card mb-4 chart-card">
+        <div class="card-header">
+          <h4 class="card-title">${Utils.icon.vitals} Signos Vitales</h4>
+          <span class="badge badge-neutral">${(vitals||[]).length} registro(s)</span>
+        </div>
+        <div style="padding:0.5rem 1rem 1rem">
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.75rem">
+            ${usedVitalKeys.map(k => `
+              <div>
+                <div class="text-xs fw-600 text-muted mb-1">${VITAL_LABELS[k]}</div>
+                <div class="chart-wrap" style="height:110px"><canvas id="h360-vital-${k}"></canvas></div>
+              </div>`).join('')}
+          </div>
+        </div>
+      </div>` : '';
+
+    return instHtml + vitalsHtml;
   }
 
   function _drawEvolutionCharts(evSorted, instruments) {
     const instMap = {};
     evSorted.forEach(ev => {
-      (ev.instruments||[]).forEach(id => {
-        const inst = instruments.find(i => i.id === id.instrumentId);
-        if (!inst || inst.scoring?.type === 'none') return;
-        const score = Utils.calcInstrumentScore(inst, id.values);
-        if (score === null) return;
-        if (!instMap[inst.id]) instMap[inst.id] = { name: id.instrumentName, inst, pts: [] };
-        instMap[inst.id].pts.push({ date: ev.date, score });
+      (ev.instruments||[]).forEach(ir => {
+        const inst = instruments.find(i => i.id === ir.instrumentId);
+        if (!inst) return;
+        const numFields = (inst.fields||[]).filter(f => ['number','slider','likert','select'].includes(f.type));
+        const hasScore = inst.scoring?.type && inst.scoring.type !== 'none';
+        if (!hasScore && !numFields.length) return;
+        if (!instMap[inst.id]) instMap[inst.id] = { name: ir.instrumentName, inst, hasScore, numFields, pts: [], fieldPts: {} };
+        if (hasScore) {
+          const score = Utils.calcInstrumentScore(inst, ir.values);
+          if (score !== null) instMap[inst.id].pts.push({ date: ev.date, score });
+        }
+        numFields.forEach(f => {
+          const val = Utils.getNumericValue(f, ir.values?.[f.id]);
+          if (val !== null) {
+            if (!instMap[inst.id].fieldPts[f.id]) instMap[inst.id].fieldPts[f.id] = [];
+            instMap[inst.id].fieldPts[f.id].push({ date: ev.date, val });
+          }
+        });
       });
     });
-    Object.entries(instMap).forEach(([instId, { name, inst, pts }]) => {
-      const canvasId = `h360-chart-${instId.replace(/-/g,'_')}`;
-      if (!document.getElementById(canvasId)) return;
-      const trend = pts.length >= 2
-        ? Utils.getTrend(pts.map(p => p.score), inst.scoring?.direction || 'higher_better')
-        : null;
-      const color = trend === 'better' ? '#10B981' : trend === 'worse' ? '#EF4444' : '#3B82F6';
-      Charts.line(canvasId,
-        pts.map(p => Utils.formatDateShort(p.date)),
-        [{ label: name, data: pts.map(p => p.score), borderColor: color, backgroundColor: color+'22', tension: 0.3, fill: true }]
-      );
+
+    Object.values(instMap).forEach(({ name, inst, hasScore, numFields, pts, fieldPts }, ci) => {
+      // Gráfico de puntuación total
+      if (hasScore && pts.length >= 1) {
+        const cid = `h360-chart-${ci}`;
+        if (document.getElementById(cid)) {
+          const trend = pts.length >= 2 ? Utils.getTrend(pts.map(p => p.score), inst.scoring?.direction||'higher_better') : null;
+          const color = trend === 'better' ? '#10B981' : trend === 'worse' ? '#EF4444' : '#3B82F6';
+          Charts.line(cid, pts.map(p => Utils.formatDateShort(p.date)),
+            [{ label: name, data: pts.map(p => p.score), borderColor: color, backgroundColor: color+'22', tension: 0.3, fill: true }]
+          );
+        }
+      }
+      // Mini gráficos por campo
+      numFields.forEach((f, fi) => {
+        const fPts = fieldPts[f.id];
+        if (!fPts?.length) return;
+        const cid = `h360-field-${ci}-${fi}`;
+        if (!document.getElementById(cid)) return;
+        Charts.mini(cid, {
+          labels: fPts.map(p => Utils.formatDateShort(p.date)),
+          data: fPts.map(p => p.val),
+          direction: f.direction || inst.scoring?.direction || 'neutral',
+        });
+      });
     });
   }
-
+  
   /* ── Notes ── */
   function _buildNotes(notes) {
     if (!notes.length) return '<div class="empty-state" style="padding:2rem"><p class="text-muted">Sin notas registradas</p></div>';
@@ -425,6 +497,25 @@ const History360Module = (() => {
   function _editMed(id)   { MedicationsModule.openForm(id, _h360Refresh); }
   function _editVital(id) { VitalsModule.openForm(id, _h360Refresh); }
   function _editEval(id)  { EvaluationsModule.openForm(id, _h360Refresh); }
+  
+  function _drawVitalsEvolution(vitals) {
+    if (!vitals?.length) return;
+    const VITAL_DIRECTION = { sbp:'neutral', dbp:'neutral', hr:'neutral', spo2:'higher_better', temp:'neutral', rr:'neutral', weight:'neutral', glucose:'lower_better' };
+    const sorted = [...vitals].sort((a,b) => a.datetime.localeCompare(b.datetime));
+    Object.keys(VITAL_DIRECTION).forEach(key => {
+      const cid = `h360-vital-${key}`;
+      if (!document.getElementById(cid)) return;
+      const pts = sorted
+        .filter(v => v.values?.[key] !== undefined && v.values?.[key] !== '')
+        .map(v => ({ date: v.datetime.split('T')[0], val: parseFloat(v.values[key]) }));
+      if (!pts.length) return;
+      Charts.mini(cid, {
+        labels: pts.map(p => Utils.formatDateShort(p.date)),
+        data: pts.map(p => p.val),
+        direction: VITAL_DIRECTION[key],
+      });
+    });
+  }
 
   return { render, openForPatient, _tab,
            _editNote, _editGoal, _editMed, _editVital, _editEval,
