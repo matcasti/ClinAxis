@@ -228,22 +228,19 @@ const NotesModule = (() => {
     `.trim();
     
       try {
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 1000,
-            system: 'Eres un asistente clínico. Genera notas de evolución profesionales, concisas y en español. Usa formato SOAP si aplica. Solo devuelve el texto de la nota, sin explicaciones.',
-            messages: [{ role: 'user', content: `Genera una nota clínica de tipo "${type||'evolución'}" con esta información:\n${context}` }],
-          }),
+        const draft = await Utils.callClaude({
+          system: 'Eres un asistente clínico. Genera notas de evolución profesionales, concisas y en español. Usa formato SOAP si aplica. Solo devuelve el texto de la nota, sin explicaciones.',
+          userMessage: `Genera una nota clínica de tipo "${type||'evolución'}" con esta información:\n${context}`,
+          maxTokens: 1000,
         });
-        const data = await response.json();
-        const draft = data.content?.[0]?.text || '';
         document.getElementById('note-content').value = draft;
         statusEl.textContent = 'Borrador generado. Revisa y edita antes de guardar.';
-      } catch(e) {
-        statusEl.textContent = 'Error al generar: ' + e.message;
+      } catch (e) {
+        if (e.message === 'no_key') {
+          statusEl.innerHTML = `Sin API key. <button class="btn btn-ghost btn-sm" onclick="App.navigateTo('settings')">Configurar →</button>`;
+        } else {
+          statusEl.textContent = 'Error: ' + e.message;
+        }
       }
       btn.disabled = false;
     });

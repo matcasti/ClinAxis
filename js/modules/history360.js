@@ -380,18 +380,11 @@ Metas activas: ${goals.filter(g=>g.status==='Activo').map(g=>`${g.title} (${g.pr
 `.trim();
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          system: 'Eres un asistente clínico experto. Analiza el historial del paciente y proporciona: 1) Resumen de evolución clínica, 2) Tendencias observadas en los instrumentos, 3) Recomendaciones de seguimiento. Responde en español, de forma concisa y profesional. Usa formato con subtítulos.',
-          messages: [{ role: 'user', content: `Analiza este historial:\n${context}` }],
-        }),
+      const text = await Utils.callClaude({
+        system: 'Eres un asistente clínico experto. Analiza el historial del paciente y proporciona: 1) Resumen de evolución clínica, 2) Tendencias observadas en los instrumentos, 3) Recomendaciones de seguimiento. Responde en español, de forma concisa y profesional. Usa formato con subtítulos.',
+        userMessage: `Analiza este historial:\n${context}`,
+        maxTokens: 1000,
       });
-      const data = await res.json();
-      const text = data.content?.[0]?.text || '';
       area.innerHTML = `
         <div class="card mb-4" style="border-color:var(--accent)">
           <div class="card-header">
@@ -401,7 +394,11 @@ Metas activas: ${goals.filter(g=>g.status==='Activo').map(g=>`${g.title} (${g.pr
           <div class="card-body"><div style="white-space:pre-wrap;line-height:1.7;font-size:.9rem">${text}</div></div>
         </div>`;
     } catch (e) {
-      area.innerHTML = `<div class="card mb-4"><div class="card-body"><p class="text-danger">Error: ${e.message}</p></div></div>`;
+      if (e.message === 'no_key') {
+        Utils.showApiKeyBanner(area);
+      } else {
+        area.innerHTML = `<div class="card mb-4"><div class="card-body"><p class="text-danger">Error: ${e.message}</p></div></div>`;
+      }
     }
   }
 

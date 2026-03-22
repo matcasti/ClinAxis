@@ -27,6 +27,8 @@ const App = (() => {
     { id: 'export',       label: 'Exportar Reporte', icon: 'reports',      module: () => ExportModule },
     null,
     { id: 'backup',       label: 'Respaldo',         icon: 'backup',       module: () => BackupModule },
+    null,
+    { id: 'settings',     label: 'Ajustes',          icon: 'instruments',  module: () => SettingsModule },
   ];
 
   async function init() {
@@ -296,7 +298,7 @@ const App = (() => {
     }
   }
 
-  return { init, navigateTo, getCurrentModule: () => currentModule, loadSampleData };
+  return { init, navigateTo, getCurrentModule: () => currentModule, loadSampleData, _setTheme: (t) => { applyTheme(t); DB.setSetting('theme', t); } };
 })();
 
 // Bootstrap

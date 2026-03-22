@@ -354,18 +354,11 @@ Datos por paciente: ${JSON.stringify(Object.values(patientData).map(pd=>({
 })), null, 1)}`.trim();
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 800,
-          system: 'Eres un especialista en análisis clínico. Analiza la evolución grupal de pacientes y proporciona: 1) Tendencias generales del grupo, 2) Pacientes que requieren atención prioritaria, 3) Recomendaciones. Sé conciso y clínico.',
-          messages: [{ role: 'user', content: `Analiza estos datos:\n${context}` }],
-        }),
+      const text = await Utils.callClaude({
+        system: 'Eres un especialista en análisis clínico. Analiza la evolución grupal de pacientes y proporciona: 1) Tendencias generales del grupo, 2) Pacientes que requieren atención prioritaria, 3) Recomendaciones. Sé conciso y clínico.',
+        userMessage: `Analiza estos datos:\n${context}`,
+        maxTokens: 800,
       });
-      const data = await res.json();
-      const text = data.content?.[0]?.text || '';
       area.innerHTML = `
         <div class="card mb-4" style="border-color:var(--accent)">
           <div class="card-header">
@@ -374,8 +367,12 @@ Datos por paciente: ${JSON.stringify(Object.values(patientData).map(pd=>({
           </div>
           <div class="card-body"><div style="white-space:pre-wrap;font-size:.9rem;line-height:1.7">${text}</div></div>
         </div>`;
-    } catch(e) {
-      area.innerHTML = `<div class="card mb-4"><div class="card-body"><p class="text-danger">Error: ${e.message}</p></div></div>`;
+    } catch (e) {
+      if (e.message === 'no_key') {
+        Utils.showApiKeyBanner(area);
+      } else {
+        area.innerHTML = `<div class="card mb-4"><div class="card-body"><p class="text-danger">Error: ${e.message}</p></div></div>`;
+      }
     }
   }
 
