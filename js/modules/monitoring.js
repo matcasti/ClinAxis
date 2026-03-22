@@ -101,8 +101,8 @@ const MonitoringModule = (() => {
   function drawGlobalCharts() {
     Charts.destroyAll();
     const inst = _instruments.find(i => i.id === _selectedInstrument);
+    if (!inst) return;                                                  // ← guard primero
     const numericFields = inst.fields.filter(f => ['number','slider','likert','select'].includes(f.type));
-    if (!inst) return;
     const area = document.getElementById('global-charts-area');
     if (!area) return;
     const fieldSel = document.getElementById('global-field-sel'); 

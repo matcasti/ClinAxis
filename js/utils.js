@@ -337,7 +337,7 @@ const Utils = {
             <span>${Utils.escapeHtml(o)}</span>
           </label>`
         ).join('');
-        control = `<div class="likert-scale" id="${id}">
+        control = `<div class="likert-scale" id="${id}-scale">
           <input type="hidden" id="${id}" name="${field.id}" value="${val !== '' ? val : ''}">
           ${likertOptions}
         </div>`;

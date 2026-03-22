@@ -418,7 +418,7 @@ const ExportModule = (() => {
           <h3 class="card-title">Vista previa del reporte</h3>
           <button class="btn btn-ghost btn-sm" onclick="document.getElementById('exp-preview-area').innerHTML=''">Cerrar</button>
         </div>
-        <iframe srcdoc="${html.replace(/"/g,'&quot;')}" style="width:100%;height:600px;border:none"></iframe>
+        <iframe srcdoc="${html.replace(/&/g,'&amp;').replace(/"/g,'&quot;')}" style="width:100%;height:600px;border:none"></iframe>
       </div>`;
   }
 
