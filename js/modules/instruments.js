@@ -259,33 +259,35 @@ const InstrumentsModule = (() => {
     const showOpts = ['select','likert'].includes(f.type);
     return `
       <div class="card mb-2 field-builder-row" data-idx="${i}">
-        <div class="grid-4 mb-2">
-          <div class="form-group mb-0">
-            <label class="form-label text-xs">Nombre</label>
-            <input type="text" class="form-input" id="bf-name-${i}" value="${f.name}" placeholder="Ej: Dolor">
-          </div>
-          <div class="form-group mb-0">
-            <label class="form-label text-xs">Tipo</label>
-            <select class="form-select bf-type-sel" id="bf-type-${i}" data-idx="${i}">
-              ${FIELD_TYPES.map(t => `<option value="${t.value}" ${f.type===t.value?'selected':''}>${t.label}</option>`).join('')}
-            </select>
-          </div>
-          <div class="form-group mb-0" id="bf-minmax-${i}" style="${showMinMax?'':'display:none'}">
-            <label class="form-label text-xs">Min / Max</label>
-            <div class="flex gap-1">
-              <input type="number" class="form-input" id="bf-min-${i}" value="${f.min??''}" placeholder="0" style="width:60px">
-              <input type="number" class="form-input" id="bf-max-${i}" value="${f.max??''}" placeholder="10" style="width:60px">
+        <div class="card-body" style="padding:.75rem">
+          <div class="grid-4 mb-2">
+            <div class="form-group mb-0">
+              <label class="form-label text-xs">Nombre</label>
+              <input type="text" class="form-input" id="bf-name-${i}" value="${f.name}" placeholder="Ej: Dolor">
+            </div>
+            <div class="form-group mb-0">
+              <label class="form-label text-xs">Tipo</label>
+              <select class="form-select bf-type-sel" id="bf-type-${i}" data-idx="${i}">
+                ${FIELD_TYPES.map(t => `<option value="${t.value}" ${f.type===t.value?'selected':''}>${t.label}</option>`).join('')}
+              </select>
+            </div>
+            <div class="form-group mb-0" id="bf-minmax-${i}" style="${showMinMax?'':'display:none'}">
+              <label class="form-label text-xs">Min / Max</label>
+              <div class="flex gap-1">
+                <input type="number" class="form-input" id="bf-min-${i}" value="${f.min??''}" placeholder="0" style="width:60px">
+                <input type="number" class="form-input" id="bf-max-${i}" value="${f.max??''}" placeholder="10" style="width:60px">
+              </div>
+            </div>
+            <div class="flex items-end">
+              <button type="button" class="btn btn-icon btn-danger" onclick="InstrumentsModule.removeField(${i})">
+                ${Utils.icon.trash}
+              </button>
             </div>
           </div>
-          <div class="flex items-end">
-            <button type="button" class="btn btn-icon btn-danger" onclick="InstrumentsModule.removeField(${i})">
-              ${Utils.icon.trash}
-            </button>
+          <div class="form-group mb-0" id="bf-opts-wrap-${i}" style="${showOpts?'':'display:none'}">
+            <label class="form-label text-xs">Opciones (una por línea, formato: valor|etiqueta)</label>
+            <textarea class="form-input" id="bf-opts-${i}" rows="3" placeholder="0|Nada\n5|Moderado\n10|Máximo">${(f.options||[]).join('\n')}</textarea>
           </div>
-        </div>
-        <div class="form-group mb-0" id="bf-opts-wrap-${i}" style="${showOpts?'':'display:none'}">
-          <label class="form-label text-xs">Opciones (una por línea, formato: valor|etiqueta)</label>
-          <textarea class="form-input" id="bf-opts-${i}" rows="3" placeholder="0|Nada\n5|Moderado\n10|Máximo">${(f.options||[]).join('\n')}</textarea>
         </div>
       </div>`;
   }

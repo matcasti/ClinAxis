@@ -16,7 +16,7 @@ const DB = (() => {
     reminders:   { keyPath: 'id', indexes: [['date','date']] },
     vitals:      { keyPath: 'id', indexes: [['patientId','patientId'],['date','date']] },
     goals:       { keyPath: 'id', indexes: [['patientId','patientId'],['status','status']] },
-    medications:        { keyPath: 'id', indexes: [['patientId','patientId'],['startDate','startDate']] },
+    medications: { keyPath: 'id', indexes: [['patientId','patientId']] },
     assessmentPackages: { keyPath: 'id' },
     settings:    { keyPath: 'id' }
   };

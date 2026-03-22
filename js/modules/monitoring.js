@@ -89,7 +89,7 @@ const MonitoringModule = (() => {
     const inst = _instruments.find(i => i.id === _selectedInstrument);
     if (!inst) return;
     const sel = document.getElementById('global-field-sel');
-    if (!sel) return;
+    if (!sel) return;                                    // ← guard ya presente; asegurar que exista
     const numericFields = inst.fields.filter(f => ['number','slider','likert','select'].includes(f.type));
     sel.innerHTML = `<option value="__score__">Puntuación total</option>` +
       numericFields.map(f => `<option value="${f.id}" ${_selectedField===f.id?'selected':''}>${f.name}</option>`).join('');
@@ -104,6 +104,8 @@ const MonitoringModule = (() => {
     if (!inst) return;
     const area = document.getElementById('global-charts-area');
     if (!area) return;
+    const fieldSel = document.getElementById('global-field-sel'); 
+    if (!fieldSel) return;        
 
     // Gather data per patient
     const patientData = {};

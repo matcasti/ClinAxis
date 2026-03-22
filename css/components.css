@@ -306,6 +306,37 @@ select.form-input,
 
 .form-control.is-error { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-light); }
 
+/* AGREGAR — al final de la sección de Forms, después de .form-error */
+
+/* ── File Input ── */
+input[type="file"].form-input,
+input[type="file"].file-input {
+  padding: .375rem .5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+input[type="file"].form-input::file-selector-button,
+input[type="file"].file-input::file-selector-button {
+  padding: .3rem .75rem;
+  margin-right: .75rem;
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text-2);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: .8rem;
+  font-weight: 500;
+  line-height: 1.4;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+input[type="file"].form-input::file-selector-button:hover,
+input[type="file"].file-input::file-selector-button:hover {
+  background: var(--surface-3);
+  color: var(--text-1);
+}
+
 /* Slider */
 .slider-field { display: flex; flex-direction: column; gap: 0.5rem; }
 .slider-row { display: flex; align-items: center; gap: 0.75rem; }

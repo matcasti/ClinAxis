@@ -24,20 +24,22 @@ const BackupModule = (() => {
           <div class="card-header">
             <h3 class="card-title">${Utils.icon.download} Exportar Datos</h3>
           </div>
-          <p class="text-sm text-muted mb-4">
-            Descarga todos tus datos en formato JSON para hacer un respaldo completo o transferirlos a otro dispositivo.
-          </p>
-          <div class="detail-grid mb-4">
-            ${[['Pacientes',counts[0]],['Evaluaciones',counts[1]],['Instrumentos',counts[2]],
-               ['Plantillas',counts[3]],['Notas',counts[4]],['Recordatorios',counts[5]]].map(([label,count]) => `
-              <div class="detail-item">
-                <div class="detail-label">${label}</div>
-                <div class="detail-value">${count}</div>
-              </div>`).join('')}
+          <div class="card-body">
+            <p class="text-sm text-muted mb-4">
+              Descarga todos tus datos en formato JSON para hacer un respaldo completo o transferirlos a otro dispositivo.
+            </p>
+            <div class="detail-grid mb-4">
+              ${[['Pacientes',counts[0]],['Evaluaciones',counts[1]],['Instrumentos',counts[2]],
+                 ['Plantillas',counts[3]],['Notas',counts[4]],['Recordatorios',counts[5]]].map(([label,count]) => `
+                <div class="detail-item">
+                  <div class="detail-label">${label}</div>
+                  <div class="detail-value">${count}</div>
+                </div>`).join('')}
+            </div>
+            <button class="btn btn-primary" id="btn-export">
+              ${Utils.icon.download} Descargar Respaldo JSON
+            </button>
           </div>
-          <button class="btn btn-primary" id="btn-export">
-            ${Utils.icon.download} Descargar Respaldo JSON
-          </button>
         </div>
 
         <!-- Import -->
@@ -45,16 +47,18 @@ const BackupModule = (() => {
           <div class="card-header">
             <h3 class="card-title">${Utils.icon.upload} Importar Datos</h3>
           </div>
-          <p class="text-sm text-muted mb-4">
-            Restaura un respaldo JSON previamente exportado. <strong class="text-danger">Atención:</strong> esto reemplazará todos los datos actuales.
-          </p>
-          <div class="form-group mb-4">
-            <label class="form-label">Archivo de respaldo (.json)</label>
-            <input type="file" class="form-input" id="import-file" accept=".json">
+          <div class="card-body">
+            <p class="text-sm text-muted mb-4">
+              Restaura un respaldo JSON previamente exportado. <strong class="text-danger">Atención:</strong> esto reemplazará todos los datos actuales.
+            </p>
+            <div class="form-group mb-4">
+              <label class="form-label">Archivo de respaldo (.json)</label>
+              <input type="file" class="form-input file-input" id="import-file" accept=".json">
+            </div>
+            <button class="btn btn-danger" id="btn-import">
+              ${Utils.icon.upload} Importar y Restaurar
+            </button>
           </div>
-          <button class="btn btn-danger" id="btn-import">
-            ${Utils.icon.upload} Importar y Restaurar
-          </button>
         </div>
       </div>
 
@@ -63,10 +67,12 @@ const BackupModule = (() => {
         <div class="card-header">
           <h3 class="card-title text-danger">Zona de Peligro</h3>
         </div>
-        <p class="text-sm text-muted mb-3">Elimina todos los datos de la aplicación de forma permanente. No se puede deshacer.</p>
-        <button class="btn btn-danger" id="btn-reset">
-          Borrar todos los datos
-        </button>
+        <div class="card-body">
+          <p class="text-sm text-muted mb-3">Elimina todos los datos de la aplicación de forma permanente. No se puede deshacer.</p>
+          <button class="btn btn-danger" id="btn-reset">
+            Borrar todos los datos
+          </button>
+        </div>
       </div>
     `;
 

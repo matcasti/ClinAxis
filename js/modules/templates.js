@@ -151,34 +151,37 @@ const TemplatesModule = (() => {
     bindTypeListeners();
   }
 
+  // MODIFICAR — función tplFieldRow, el return completo
   function tplFieldRow(f, i) {
     const showOpts = f.type === 'select';
     return `
       <div class="card mb-2">
-        <div class="grid-4 mb-2">
-          <div class="form-group mb-0">
-            <label class="form-label text-xs">Nombre del campo</label>
-            <input type="text" class="form-input" id="tf-name-${i}" value="${f.name}" placeholder="Ej: Nombre">
+        <div class="card-body" style="padding:.75rem">
+          <div class="grid-4 mb-2">
+            <div class="form-group mb-0">
+              <label class="form-label text-xs">Nombre del campo</label>
+              <input type="text" class="form-input" id="tf-name-${i}" value="${f.name}" placeholder="Ej: Nombre">
+            </div>
+            <div class="form-group mb-0">
+              <label class="form-label text-xs">Tipo</label>
+              <select class="form-select tf-type-sel" id="tf-type-${i}" data-idx="${i}">
+                ${FIELD_TYPES.map(t => `<option value="${t.value}" ${f.type===t.value?'selected':''}>${t.label}</option>`).join('')}
+              </select>
+            </div>
+            <div class="form-group mb-0 flex items-center gap-2" style="padding-top:1.5rem">
+              <input type="checkbox" id="tf-req-${i}" ${f.required?'checked':''}>
+              <label for="tf-req-${i}" class="text-sm">Obligatorio</label>
+            </div>
+            <div class="flex items-end">
+              <button type="button" class="btn btn-icon btn-danger" onclick="TemplatesModule.removeField(${i})">
+                ${Utils.icon.trash}
+              </button>
+            </div>
           </div>
-          <div class="form-group mb-0">
-            <label class="form-label text-xs">Tipo</label>
-            <select class="form-select tf-type-sel" id="tf-type-${i}" data-idx="${i}">
-              ${FIELD_TYPES.map(t => `<option value="${t.value}" ${f.type===t.value?'selected':''}>${t.label}</option>`).join('')}
-            </select>
+          <div class="form-group mb-0" id="tf-opts-wrap-${i}" style="${showOpts?'':'display:none'}">
+            <label class="form-label text-xs">Opciones (una por línea)</label>
+            <textarea class="form-input" id="tf-opts-${i}" rows="2" placeholder="Opción 1\nOpción 2">${(f.options||[]).join('\n')}</textarea>
           </div>
-          <div class="form-group mb-0 flex items-center gap-2" style="padding-top:1.5rem">
-            <input type="checkbox" id="tf-req-${i}" ${f.required?'checked':''}>
-            <label for="tf-req-${i}" class="text-sm">Obligatorio</label>
-          </div>
-          <div class="flex items-end">
-            <button type="button" class="btn btn-icon btn-danger" onclick="TemplatesModule.removeField(${i})">
-              ${Utils.icon.trash}
-            </button>
-          </div>
-        </div>
-        <div class="form-group mb-0" id="tf-opts-wrap-${i}" style="${showOpts?'':'display:none'}">
-          <label class="form-label text-xs">Opciones (una por línea)</label>
-          <textarea class="form-input" id="tf-opts-${i}" rows="2" placeholder="Opción 1\nOpción 2">${(f.options||[]).join('\n')}</textarea>
         </div>
       </div>`;
   }
