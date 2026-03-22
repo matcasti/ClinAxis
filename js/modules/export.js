@@ -108,35 +108,153 @@ const ExportModule = (() => {
         instSeries[inst.id].data.push(score);
       });
     });
+    
+    // ── Series por campo individual (incluye instrumentos con scoring:none como EVA) ──
+    const _PALETTE = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#84CC16','#F97316','#6366F1'];
+    const _trendColor = (data, dir) => {
+      if (!data || data.length < 2) return '#6366F1';
+      const d = data[data.length - 1] - data[0];
+      if (dir === 'higher_better') return d > 0 ? '#10B981' : d < 0 ? '#EF4444' : '#6366F1';
+      if (dir === 'lower_better')  return d < 0 ? '#10B981' : d > 0 ? '#EF4444' : '#6366F1';
+      return '#6366F1';
+    };
 
-    const chartsScript = Object.entries(instSeries)
-      .filter(([, s]) => s.data.length >= 2)
-      .map(([id, s], ci) => {
-        const color = s.dir === 'higher_better' ? '#10B981' : s.dir === 'lower_better' ? '#EF4444' : '#3B82F6';
-        return `
-          new Chart(document.getElementById('ec${ci}'), {
-            type: 'line',
-            data: {
-              labels: ${JSON.stringify(s.labels)},
-              datasets: [{ label: ${JSON.stringify(s.name)}, data: ${JSON.stringify(s.data)},
-                borderColor: '${color}', backgroundColor: '${color}22',
-                tension: 0.3, fill: true, pointRadius: 4 }]
-            },
-            options: { responsive:true, maintainAspectRatio:false,
-              plugins: { legend: { display: false } },
-              scales: { y: { beginAtZero: false } }
-            }
-          });`;
+    const fieldSeriesMap = {}; // instId → { instName, fields: { fid: {name,labels,data,direction,color} } }
+    evSort.forEach(ev => {
+      (ev.instruments||[]).forEach(ir => {
+        const inst = instruments.find(i => i.id === ir.instrumentId);
+        if (!inst) return;
+        const numFields = (inst.fields||[]).filter(f => ['number','slider','likert','select'].includes(f.type));
+        if (!numFields.length) return;
+        if (!fieldSeriesMap[inst.id]) fieldSeriesMap[inst.id] = { instName: ir.instrumentName, fields: {} };
+        numFields.forEach((f, fi) => {
+          const val = Utils.getNumericValue(f, ir.values?.[f.id]);
+          if (val === null) return;
+          if (!fieldSeriesMap[inst.id].fields[f.id]) {
+            fieldSeriesMap[inst.id].fields[f.id] = {
+              name: f.name, labels: [], data: [],
+              direction: f.direction || inst.scoring?.direction || 'neutral',
+              color: _PALETTE[fi % _PALETTE.length]
+            };
+          }
+          fieldSeriesMap[inst.id].fields[f.id].labels.push(Utils.formatDateShort(ev.date));
+          fieldSeriesMap[inst.id].fields[f.id].data.push(val);
+        });
+      });
+    });
+
+    // ── Series de signos vitales ──
+    const _VLABELS = { sbp:'PAS (mmHg)', dbp:'PAD (mmHg)', hr:'FC (lpm)', spo2:'SpO₂ (%)', temp:'Temp (°C)', rr:'FR (rpm)', weight:'Peso (kg)', glucose:'Glucosa (mg/dL)' };
+    const _VCOLORS = { sbp:'#EF4444', dbp:'#3B82F6', hr:'#F59E0B', spo2:'#10B981', temp:'#8B5CF6', rr:'#06B6D4', weight:'#6366F1', glucose:'#EC4899' };
+    const _vSorted = [...vitals].sort((a,b) => a.datetime.localeCompare(b.datetime));
+    const vitalSeriesMap = {};
+    Object.keys(_VLABELS).forEach(k => {
+      const pts = _vSorted
+        .filter(v => v.values?.[k] !== undefined && v.values?.[k] !== '')
+        .map(v => ({ date: v.datetime.split('T')[0], val: parseFloat(v.values[k]) }));
+      if (pts.length >= 2) vitalSeriesMap[k] = {
+        name: _VLABELS[k], color: _VCOLORS[k],
+        labels: pts.map(p => Utils.formatDateShort(p.date)),
+        data:   pts.map(p => p.val)
+      };
+    });
+
+    // Entradas con >= 2 puntos de puntuación total
+    const scoreEntries = Object.entries(instSeries).filter(([, s]) => s.data.length >= 2);
+
+    // Script puntuación total (ec${ci} — IDs existentes preservados)
+    const chartsScript = scoreEntries.map(([, s], ci) => {
+      const color = s.dir === 'higher_better' ? '#10B981' : s.dir === 'lower_better' ? '#EF4444' : '#3B82F6';
+      return `new Chart(document.getElementById('ec${ci}'),{type:'line',data:{labels:${JSON.stringify(s.labels)},datasets:[{label:${JSON.stringify(s.name)},data:${JSON.stringify(s.data)},borderColor:'${color}',backgroundColor:'${color}22',tension:0.3,fill:true,pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:false}}}});`;
+    }).join('\n');
+
+    // Script mini gráficos por campo — instrumentos con puntuación total
+    const fieldChartsScript = scoreEntries.map(([instId], ci) => {
+      const fMap = fieldSeriesMap[instId];
+      if (!fMap) return '';
+      return Object.values(fMap.fields)
+        .filter(f => f.data.length >= 2)
+        .map((f, fi) => `_mc('ecf${ci}x${fi}',${JSON.stringify(f.labels)},${JSON.stringify(f.data)},'${_trendColor(f.data, f.direction)}');`)
+        .join('\n');
+    }).join('\n') +
+    // Instrumentos sin puntuación total (EVA y similares)
+    Object.entries(fieldSeriesMap)
+      .filter(([instId]) => !scoreEntries.some(([id]) => id === instId))
+      .map(([instId, { fields }]) => {
+        const sid = instId.replace(/[^a-z0-9]/gi, '');
+        return Object.values(fields)
+          .filter(f => f.data.length >= 2)
+          .map((f, fi) => `_mc('ecno${sid}${fi}',${JSON.stringify(f.labels)},${JSON.stringify(f.data)},'${_trendColor(f.data, f.direction)}');`)
+          .join('\n');
       }).join('\n');
 
-    const chartsHtml = Object.values(instSeries)
-      .filter(s => s.data.length >= 2)
-      .map((s, ci) => `
+    // Script signos vitales
+    const vitalChartsScript = Object.entries(vitalSeriesMap)
+      .map(([k, v]) => `_mc('ecv${k}',${JSON.stringify(v.labels)},${JSON.stringify(v.data)},'${v.color}');`)
+      .join('\n');
+
+    // HTML evolución: puntuación + desglose campos por instrumento
+    const chartsHtml = scoreEntries.map(([instId, s], ci) => {
+      const validFields = fieldSeriesMap[instId]
+        ? Object.values(fieldSeriesMap[instId].fields).filter(f => f.data.length >= 2)
+        : [];
+      const fieldGrid = validFields.length ? `
+        <div style="border-top:1px solid #e2e8f0;padding:.625rem 0 .25rem;margin-top:.5rem">
+          <p style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin-bottom:.5rem">Desglose por campo</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.625rem">
+            ${validFields.map((f, fi) => `
+              <div style="break-inside:avoid">
+                <p style="font-size:.7rem;font-weight:600;color:#64748b;margin-bottom:.15rem">${Utils.escapeHtml(f.name)}</p>
+                <div style="height:86px"><canvas id="ecf${ci}x${fi}"></canvas></div>
+              </div>`).join('')}
+          </div>
+        </div>` : '';
+      return `
         <div class="section">
-          <h4>${s.name}</h4>
-          <div style="height:180px;margin:0.5rem 0"><canvas id="ec${ci}"></canvas></div>
+          <h4>${Utils.escapeHtml(s.name)}</h4>
+          <div style="height:175px;margin:0.5rem 0"><canvas id="ec${ci}"></canvas></div>
           <p class="meta">Mediciones: ${s.data.length} · Último valor: <strong>${s.data[s.data.length-1]}</strong></p>
-        </div>`).join('');
+          ${fieldGrid}
+        </div>`;
+    }).join('') +
+    // Instrumentos sin puntuación agregada (e.g. EVA)
+    Object.entries(fieldSeriesMap)
+      .filter(([instId]) => !scoreEntries.some(([id]) => id === instId))
+      .map(([instId, { instName, fields }]) => {
+        const validFields = Object.values(fields).filter(f => f.data.length >= 2);
+        if (!validFields.length) return '';
+        const sid = instId.replace(/[^a-z0-9]/gi, '');
+        return `
+          <div class="section">
+            <h4>${Utils.escapeHtml(instName)}</h4>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.625rem;margin:.5rem 0 .25rem">
+              ${validFields.map((f, fi) => `
+                <div style="break-inside:avoid">
+                  <p style="font-size:.7rem;font-weight:600;color:#64748b;margin-bottom:.15rem">${Utils.escapeHtml(f.name)}</p>
+                  <div style="height:106px"><canvas id="ecno${sid}${fi}"></canvas></div>
+                </div>`).join('')}
+            </div>
+            <p class="meta">Mediciones: ${validFields[0]?.data.length ?? 0}</p>
+          </div>`;
+      }).join('');
+
+    // HTML sección de evolución de signos vitales
+    const vitalKeys = Object.keys(vitalSeriesMap);
+    const vitalChartsHtml = vitalKeys.length && inc('vitales') ? `
+      <div class="section">
+        <h3>Signos Vitales — Evolución</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:.75rem">
+          ${vitalKeys.map(k => `
+            <div style="break-inside:avoid">
+              <p style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:.2rem">${_VLABELS[k]}</p>
+              <div style="height:96px"><canvas id="ecv${k}"></canvas></div>
+              <p style="font-size:.7rem;color:#94a3b8;margin-top:.15rem">
+                Último: <strong style="color:#0f172a">${vitalSeriesMap[k].data[vitalSeriesMap[k].data.length-1]}</strong>
+                &nbsp;·&nbsp;${vitalSeriesMap[k].data.length} registros
+              </p>
+            </div>`).join('')}
+        </div>
+      </div>` : '';
 
     /* ── Patient fields ── */
     const fieldsHtml = tpl ? tpl.fields
@@ -256,7 +374,7 @@ const ExportModule = (() => {
     </div>
     <div class="body">
       ${fieldsHtml ? `<div class="section"><h3>Datos del Paciente</h3><div class="fields-grid">${fieldsHtml}</div></div>` : ''}
-      ${chartsHtml ? `<div class="section"><h3>Evolución Clínica</h3>${chartsHtml}</div>` : ''}
+      ${chartsHtml || vitalChartsHtml ? `<div class="section"><h3>Evolución Clínica</h3>${chartsHtml}${vitalChartsHtml}</div>` : ''}
       ${evalsHtml}
       ${notesHtml}
       ${medsHtml}
@@ -268,7 +386,17 @@ const ExportModule = (() => {
       <span>${pName} · Generado ${today}</span>
     </div>
   </div>
-  <script>window.addEventListener('load',()=>{${chartsScript}});<\/script>
+  <script>
+    function _mc(id,lb,dt,cl){
+      var el=document.getElementById(id);if(!el)return;
+      new Chart(el,{type:'line',data:{labels:lb,datasets:[{data:dt,borderColor:cl,backgroundColor:cl+'22',tension:0.4,pointRadius:dt.length>6?2:3,fill:true,borderWidth:1.5,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return' '+c.parsed.y;}}}},scales:{x:{ticks:{font:{size:8},maxRotation:0,maxTicksLimit:4},grid:{display:false}},y:{ticks:{font:{size:8},maxTicksLimit:3}}}}});
+    }
+    window.addEventListener('load',function(){
+      ${chartsScript}
+      ${fieldChartsScript}
+      ${vitalChartsScript}
+    });
+  <\/script>
 </body>
 </html>`;
 
