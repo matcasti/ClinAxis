@@ -640,6 +640,22 @@ input[type="file"].file-input::file-selector-button:hover {
 .toast-warning { border-left: 3px solid var(--warning); }
 .toast-info { border-left: 3px solid var(--info); }
 
+.toast-undo-btn {
+  flex-shrink: 0;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-display);
+  white-space: nowrap;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.toast-undo-btn:hover { background: var(--primary); color: white; }
+
 /* ── TABS ── */
 .tabs {
   display: flex;
@@ -1049,7 +1065,7 @@ input[type="file"].file-input::file-selector-button:hover {
 .timeline-meta { font-size: 0.75rem; color: var(--text-3); margin-top: 0.1rem; }
 
 /* ── INSTRUMENT BLOCKS ── */
-.instrument-block .instrument-fields { padding: 0.5rem 0; }
+.instrument-block .instrument-fields { padding: 0.75rem 1.25rem 0.25rem; }
 
 /* ── CHIPS / TAGS ── */
 .chip {

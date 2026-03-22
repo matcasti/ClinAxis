@@ -188,12 +188,17 @@ const MedicationsModule = (() => {
   }
 
   async function deleteMed(id) {
+    const m = await DB.get('medications', id);
     const ok = await Utils.confirm('¿Eliminar medicamento?', '');
     if (!ok) return;
     await DB.del('medications', id);
     _meds = await DB.getAll('medications');
-    Utils.toast('Medicamento eliminado', 'info');
     renderList(document.getElementById('module-container'));
+    Utils.toastWithUndo(`Medicamento "${m.name}" eliminado`, async () => {
+      await DB.put('medications', m);
+      _meds = await DB.getAll('medications');
+      renderList(document.getElementById('module-container'));
+    });
   }
 
   return { render, openForm, deleteMed };

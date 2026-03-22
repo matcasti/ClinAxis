@@ -151,12 +151,17 @@ const GoalsModule = (() => {
   }
 
   async function deleteGoal(id) {
+    const g = await DB.get('goals', id);
     const ok = await Utils.confirm('¿Eliminar meta?', '');
     if (!ok) return;
     await DB.del('goals', id);
     _goals = await DB.getAll('goals');
-    Utils.toast('Meta eliminada', 'info');
     renderList(document.getElementById('module-container'));
+    Utils.toastWithUndo(`Meta "${Utils.truncate(g.title, 30)}" eliminada`, async () => {
+      await DB.put('goals', g);
+      _goals = await DB.getAll('goals');
+      renderList(document.getElementById('module-container'));
+    });
   }
 
   return { render, openForm, deleteGoal };

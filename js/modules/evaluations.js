@@ -131,17 +131,19 @@ const EvaluationsModule = (() => {
         <div class="card mb-3">
           <div class="card-header">
             <h4 class="card-title">${inst.instrumentName}</h4>
-            ${score !== null ? `<div class="score-display score-${Utils.categoryColor(score, instDef)}">${score} ${instDef?.scoring?.label||'pts'}</div>` : ''}
+            ${score !== null ? `<div class="score-display score-${Utils.scoreClass(score, instDef)}">${score} ${instDef?.scoring?.label||'pts'}</div>` : ''}
           </div>
-          <div class="detail-grid">
-            ${(instDef?.fields||[]).map(f => {
-              const val = inst.values?.[f.id];
-              if (val === undefined || val === '') return '';
-              return `<div class="detail-item">
-                <div class="detail-label">${f.name}</div>
-                <div class="detail-value">${formatFieldVal(f, val)}</div>
-              </div>`;
-            }).join('')}
+          <div class="card-body">
+            <div class="detail-grid">
+              ${(instDef?.fields||[]).map(f => {
+                const val = inst.values?.[f.id];
+                if (val === undefined || val === '') return '';
+                return `<div class="detail-item">
+                  <div class="detail-label">${f.name}</div>
+                  <div class="detail-value">${formatFieldVal(f, val)}</div>
+                </div>`;
+              }).join('')}
+            </div>
           </div>
         </div>`;
     }
@@ -401,13 +403,19 @@ const EvaluationsModule = (() => {
   }
 
   async function deleteEval(id) {
+    const ev = await DB.get('evaluations', id);
     const ok = await Utils.confirm('¿Eliminar evaluación?', 'Esta acción no se puede deshacer.');
     if (!ok) return;
     await DB.del('evaluations', id);
     _evals = await DB.getAll('evaluations');
     _evals.sort((a,b) => b.date.localeCompare(a.date));
-    Utils.toast('Evaluación eliminada', 'info');
     renderList(document.getElementById('module-container'));
+    Utils.toastWithUndo(`Evaluación "${Utils.truncate(ev.title||'Evaluación', 30)}" eliminada`, async () => {
+      await DB.put('evaluations', ev);
+      _evals = await DB.getAll('evaluations');
+      _evals.sort((a,b) => b.date.localeCompare(a.date));
+      renderList(document.getElementById('module-container'));
+    });
   }
 
   function removeInst(idx) {

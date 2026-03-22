@@ -50,18 +50,19 @@ const History360Module = (() => {
       return;
     }
 
-    const [p, templates, evaluations, notes, vitals, goals, medications, instruments, reminders] =
-      await Promise.all([
-        DB.get('patients',          _selectedPatient),
-        DB.getAll('templates'),
-        DB.getByIndex('evaluations','patientId', _selectedPatient),
-        DB.getByIndex('notes',      'patientId', _selectedPatient),
-        DB.getByIndex('vitals',     'patientId', _selectedPatient),
-        DB.getByIndex('goals',      'patientId', _selectedPatient),
-        DB.getByIndex('medications','patientId', _selectedPatient),
-        DB.getAll('instruments'),
-        DB.getByIndex('reminders',  'patientId', _selectedPatient),
-      ]);
+    const [p, templates, evaluations, notes, vitals, goals, medications, instruments, remindersRaw] =
+    await Promise.all([
+      DB.get('patients',          _selectedPatient),
+      DB.getAll('templates'),
+      DB.getByIndex('evaluations','patientId', _selectedPatient),
+      DB.getByIndex('notes',      'patientId', _selectedPatient),
+      DB.getByIndex('vitals',     'patientId', _selectedPatient),
+      DB.getByIndex('goals',      'patientId', _selectedPatient),
+      DB.getByIndex('medications','patientId', _selectedPatient),
+      DB.getAll('instruments'),
+      DB.getAll('reminders'),
+    ]);
+  const reminders = remindersRaw.filter(r => r.patientId === _selectedPatient);
 
     if (!p) { container.innerHTML = '<p class="text-muted p-4">Paciente no encontrado</p>'; return; }
 

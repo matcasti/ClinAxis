@@ -232,13 +232,19 @@ const RemindersModule = (() => {
   }
 
   async function deleteReminder(id) {
+    const r = await DB.get('reminders', id);
     const ok = await Utils.confirm('¿Eliminar recordatorio?', '');
     if (!ok) return;
     await DB.del('reminders', id);
     _reminders = await DB.getAll('reminders');
     _reminders.sort((a,b) => a.date.localeCompare(b.date));
-    Utils.toast('Recordatorio eliminado', 'info');
     renderView(document.getElementById('module-container'));
+    Utils.toastWithUndo(`Recordatorio "${Utils.truncate(r.title, 30)}" eliminado`, async () => {
+      await DB.put('reminders', r);
+      _reminders = await DB.getAll('reminders');
+      _reminders.sort((a,b) => a.date.localeCompare(b.date));
+      renderView(document.getElementById('module-container'));
+    });
   }
 
   return { render, setView, openForm, toggleComplete, deleteReminder };

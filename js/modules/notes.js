@@ -97,18 +97,20 @@ const NotesModule = (() => {
             ${n.type ? `<span class="badge badge-neutral text-xs">${n.type}</span>` : ''}
           </div>
         </div>
-        <div class="note-content text-sm">${Utils.truncate(n.content||'', 140)}</div>
-        ${tags ? `<div class="chips mt-2">${tags}</div>` : ''}
-        <div class="flex gap-1 mt-3">
-          <button class="btn btn-ghost btn-sm" onclick="NotesModule.openDetail('${n.id}')">
-            ${Utils.icon.eye} Ver
-          </button>
-          <button class="btn btn-ghost btn-sm" onclick="NotesModule.openForm('${n.id}')">
-            ${Utils.icon.edit} Editar
-          </button>
-          <button class="btn btn-icon btn-danger btn-sm ml-auto" onclick="NotesModule.deleteNote('${n.id}')">
-            ${Utils.icon.trash}
-          </button>
+        <div class="card-body">
+          <div class="note-content text-sm">${Utils.truncate(n.content||'', 140)}</div>
+          ${tags ? `<div class="chips mt-2">${tags}</div>` : ''}
+          <div class="flex gap-1 mt-3">
+            <button class="btn btn-ghost btn-sm" onclick="NotesModule.openDetail('${n.id}')">
+              ${Utils.icon.eye} Ver
+            </button>
+            <button class="btn btn-ghost btn-sm" onclick="NotesModule.openForm('${n.id}')">
+              ${Utils.icon.edit} Editar
+            </button>
+            <button class="btn btn-icon btn-danger btn-sm ml-auto" onclick="NotesModule.deleteNote('${n.id}')">
+              ${Utils.icon.trash}
+            </button>
+          </div>
         </div>
       </div>`;
   }
@@ -248,13 +250,19 @@ const NotesModule = (() => {
   }
 
   async function deleteNote(id) {
+    const n = await DB.get('notes', id);
     const ok = await Utils.confirm('¿Eliminar nota?', 'Esta acción no se puede deshacer.');
     if (!ok) return;
     await DB.del('notes', id);
     _notes = await DB.getAll('notes');
     _notes.sort((a,b) => b.createdAt - a.createdAt);
-    Utils.toast('Nota eliminada', 'info');
     renderList(document.getElementById('module-container'));
+    Utils.toastWithUndo(`Nota "${Utils.truncate(n.title||'Sin título', 30)}" eliminada`, async () => {
+      await DB.put('notes', n);
+      _notes = await DB.getAll('notes');
+      _notes.sort((a,b) => b.createdAt - a.createdAt);
+      renderList(document.getElementById('module-container'));
+    });
   }
 
   return { render, openDetail, openForm, deleteNote };

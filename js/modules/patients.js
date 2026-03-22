@@ -152,9 +152,9 @@ const PatientsModule = (() => {
   }
 
   function switchTab(btn, tabId) {
-    document.querySelectorAll('.large-modal-body .tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('#modal-lg-body .tab').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
-    document.querySelectorAll('.large-modal-body > div[id^="tab-"]').forEach(d => d.classList.add('hidden'));
+    document.querySelectorAll('#modal-lg-body > div[id^="tab-"]').forEach(d => d.classList.add('hidden'));
     document.getElementById(tabId)?.classList.remove('hidden');
   }
 
@@ -230,16 +230,22 @@ const PatientsModule = (() => {
     const name = Utils.patientLabel(p);
     const ok = await Utils.confirm(`¿Eliminar a ${name}?`, 'Esta acción no se puede deshacer. Se eliminarán también sus evaluaciones y notas.');
     if (!ok) return;
+    const evals = await DB.getByIndex('evaluations', 'patientId', id);
+    const notes = await DB.getByIndex('notes', 'patientId', id);
     await DB.del('patients', id);
-    // cascade
-    const evals = await DB.getByIndex('evaluations','patientId', id);
     for (const e of evals) await DB.del('evaluations', e.id);
-    const notes = await DB.getByIndex('notes','patientId', id);
     for (const n of notes) await DB.del('notes', n.id);
     _patients = await DB.getAll('patients');
     _patients.sort((a,b) => Utils.patientLabel(a).localeCompare(Utils.patientLabel(b)));
-    Utils.toast('Paciente eliminado', 'info');
     renderList(document.getElementById('module-container'));
+    Utils.toastWithUndo(`Paciente "${name}" eliminado`, async () => {
+      await DB.put('patients', p);
+      for (const e of evals) await DB.put('evaluations', e);
+      for (const n of notes) await DB.put('notes', n);
+      _patients = await DB.getAll('patients');
+      _patients.sort((a,b) => Utils.patientLabel(a).localeCompare(Utils.patientLabel(b)));
+      renderList(document.getElementById('module-container'));
+    });
   }
   
   async function buildTimeline(patientId, evals, notes) {

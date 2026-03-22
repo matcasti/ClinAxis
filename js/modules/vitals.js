@@ -207,12 +207,17 @@ const VitalsModule = (() => {
   }
 
   async function deleteVital(id) {
+    const v = await DB.get('vitals', id);
     const ok = await Utils.confirm('¿Eliminar registro?', '');
     if (!ok) return;
     await DB.del('vitals', id);
     _vitals = await DB.getAll('vitals');
-    Utils.toast('Registro eliminado', 'info');
     drawVitals();
+    Utils.toastWithUndo('Registro de signos vitales eliminado', async () => {
+      await DB.put('vitals', v);
+      _vitals = await DB.getAll('vitals');
+      drawVitals();
+    });
   }
 
   return { render, deleteVital };

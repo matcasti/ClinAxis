@@ -116,22 +116,51 @@ const Utils = {
 
   // ── Toast ──
   toast(message, type = 'success', duration = 3500) {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const icons = {
+        success: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="var(--success)"/><path d="M5 8l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+        error: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="var(--danger)"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+        warning: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2L1 14h14L8 2z" fill="var(--warning)"/><path d="M8 6v4M8 11.5v.5" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+        info: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="var(--info)"/><path d="M8 7v4M8 5v.5" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>`
+      };
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.innerHTML = `${icons[type] || icons.info} <span>${message}</span>`;
+      container.appendChild(toast);
+      requestAnimationFrame(() => { requestAnimationFrame(() => toast.classList.add('show')); });
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+      }, duration);
+    },
+    
+    toastWithUndo(message, undoCallback, duration = 5500) {
     const container = document.getElementById('toast-container');
     if (!container) return;
-    const icons = {
-      success: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="var(--success)"/><path d="M5 8l2 2 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-      error: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="var(--danger)"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>`,
-      warning: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2L1 14h14L8 2z" fill="var(--warning)"/><path d="M8 6v4M8 11.5v.5" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>`,
-      info: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="var(--info)"/><path d="M8 7v4M8 5v.5" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>`
-    };
     const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.innerHTML = `${icons[type] || icons.info} <span>${message}</span>`;
+    toast.className = 'toast toast-info';
+    toast.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="var(--info)"/><path d="M8 7v4M8 5v.5" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span style="flex:1">${message}</span>
+      <button class="toast-undo-btn">↩ Deshacer</button>`;
+    let undone = false;
     container.appendChild(toast);
     requestAnimationFrame(() => { requestAnimationFrame(() => toast.classList.add('show')); });
-    setTimeout(() => {
+    toast.querySelector('.toast-undo-btn').addEventListener('click', async () => {
+      if (undone) return;
+      undone = true;
       toast.classList.remove('show');
       setTimeout(() => toast.remove(), 300);
+      try {
+        await undoCallback();
+        Utils.toast('Acción deshecha correctamente', 'success');
+      } catch (e) {
+        Utils.toast('No se pudo deshacer: ' + e.message, 'error');
+      }
+    });
+    setTimeout(() => {
+      if (!undone) { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }
     }, duration);
   },
 
@@ -345,6 +374,15 @@ const Utils = {
       geriatría: '#84CC16', pediatría: '#F59E0B'
     };
     return map[cat?.toLowerCase()] || '#94A3B8';
+  },
+  
+  scoreClass(score, inst) {
+    if (!inst?.scoring?.maxScore || score === null || score === undefined) return 'neutral';
+    const pct = (score / inst.scoring.maxScore) * 100;
+    const dir = inst.scoring?.direction || 'higher_better';
+    if (dir === 'higher_better') return pct >= 70 ? 'good' : pct >= 40 ? 'warning' : 'bad';
+    if (dir === 'lower_better') return pct <= 30 ? 'good' : pct <= 60 ? 'warning' : 'bad';
+    return 'neutral';
   },
 
   chartColors: [
