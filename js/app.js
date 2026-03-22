@@ -38,6 +38,7 @@ const App = (() => {
 
     const hash = location.hash.replace('#','') || 'dashboard';
     await navigateTo(hash);
+    await showWelcomeIfNeeded();
   }
 
   async function loadTheme() {
@@ -221,8 +222,81 @@ const App = (() => {
       container.innerHTML = html || `<div class="text-muted text-sm p-4 text-center">Sin resultados para "${e.target.value}"</div>`;
     }, 200));
   }
+  
+  // ── Welcome Modal ──
+  async function showWelcomeIfNeeded() {
+    const suppressed = await DB.getSetting('welcome_shown', false);
+    if (suppressed) return;
 
-  return { init, navigateTo, getCurrentModule: () => currentModule };
+    const FEATURES = [
+      { icon: '👥', color: '#EBF3FF', title: 'Pacientes & Historia 360°', desc: 'Fichas clínicas por especialidad con vista longitudinal completa del historial.' },
+      { icon: '📋', color: '#E6FAF8', title: 'Instrumentos Validados', desc: 'Barthel, PHQ-9, MMSE, EVA, MRC y más. Crea y personaliza los tuyos.' },
+      { icon: '📈', color: '#EFF6FF', title: 'Monitoreo de Evolución', desc: 'Gráficos de progreso individual y grupal con comparativas entre pacientes.' },
+      { icon: '🎯', color: '#ECFDF5', title: 'Metas Terapéuticas', desc: 'Objetivos con actualización automática de progreso según evaluaciones.' },
+      { icon: '🔔', color: '#FFFBEB', title: 'Alertas Inteligentes', desc: 'Detección automática de deterioro clínico, metas vencidas y signos críticos.' },
+      { icon: '✨', color: '#F5F3FF', title: 'Asistente IA Integrado', desc: 'Notas clínicas automatizadas, resúmenes de historial y análisis grupal.' },
+    ];
+
+    const grid = document.getElementById('welcome-features-grid');
+    if (grid) {
+      grid.innerHTML = FEATURES.map(f => `
+        <div style="display:flex;align-items:flex-start;gap:0.75rem;padding:0.875rem;background:var(--surface-2);border-radius:var(--radius);border:1px solid var(--border);transition:border-color var(--transition)">
+          <div style="width:38px;height:38px;border-radius:var(--radius-sm);background:${f.color};display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0">${f.icon}</div>
+          <div>
+            <div style="font-family:var(--font-display);font-weight:600;font-size:0.855rem;color:var(--text-1);margin-bottom:0.2rem">${f.title}</div>
+            <div style="font-size:0.775rem;color:var(--text-3);line-height:1.45">${f.desc}</div>
+          </div>
+        </div>`).join('');
+    }
+
+    const overlay = document.getElementById('welcome-overlay');
+    overlay.classList.remove('hidden');
+
+    const _closeWelcome = async () => {
+      if (document.getElementById('welcome-dont-show')?.checked) {
+        await DB.setSetting('welcome_shown', true);
+      }
+      overlay.classList.add('hidden');
+    };
+
+    document.getElementById('welcome-start').addEventListener('click', _closeWelcome);
+
+    document.getElementById('welcome-load-data').addEventListener('click', async () => {
+      const btn = document.getElementById('welcome-load-data');
+      const original = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<svg viewBox="0 0 16 16" fill="none" style="width:13px;height:13px;animation:spin 0.6s linear infinite"><path d="M8 2a6 6 0 110 12A6 6 0 018 2z" stroke="currentColor" stroke-width="1.5" stroke-dasharray="18 6"/></svg> Cargando…`;
+      try {
+        await loadSampleData();
+        await _closeWelcome();
+        Utils.toast('✅ Datos de ejemplo cargados. ¡Explora la app!', 'success', 5000);
+        await navigateTo('dashboard');
+      } catch (e) {
+        Utils.toast('Error al cargar datos: ' + e.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = original;
+      }
+    });
+
+    overlay.addEventListener('click', e => { if (e.target === overlay) _closeWelcome(); });
+  }
+
+  async function loadSampleData() {
+    if (typeof SAMPLE_DATA === 'undefined') {
+      throw new Error('sample-data.js no encontrado. Asegúrate de incluirlo antes de app.js.');
+    }
+    const stores = ['patients','evaluations','notes','reminders','vitals','goals','medications','assessmentPackages'];
+    for (const store of stores) {
+      const records = SAMPLE_DATA[store];
+      if (Array.isArray(records)) {
+        for (const record of records) {
+          await DB.put(store, record);
+        }
+      }
+    }
+  }
+
+  return { init, navigateTo, getCurrentModule: () => currentModule, loadSampleData };
 })();
 
 // Bootstrap
