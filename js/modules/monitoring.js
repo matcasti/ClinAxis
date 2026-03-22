@@ -322,6 +322,17 @@ const MonitoringModule = (() => {
     });
   }
   
+  // AI Analysis button
+  const toolbar = document.querySelector('#module-container .toolbar');
+  if (toolbar) {
+    const aiBtn = document.createElement('button');
+    aiBtn.className = 'btn btn-ghost btn-sm';
+    aiBtn.style.color = 'var(--color-accent)';
+    aiBtn.innerHTML = '✨ Analizar con IA';
+    aiBtn.onclick = () => _runAIAnalysis();
+    toolbar.appendChild(aiBtn);
+  }
+  
   async function _runAIAnalysis() {
     const inst = _instruments.find(i => i.id === _selectedInstrument);
     if (!inst) return;
