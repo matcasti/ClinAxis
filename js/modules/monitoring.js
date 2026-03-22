@@ -67,7 +67,15 @@ const MonitoringModule = (() => {
           <select class="form-select" id="global-field-sel"></select>
         </div>
       </div>
-      <div id="global-charts-area"></div>`;
+      <div id="global-charts-area"></div>
+      <div class="mt-3">
+        <button class="btn btn-ghost btn-sm" id="btn-ai-analysis" style="color:var(--color-accent)">
+          ✨ Analizar con IA
+        </button>
+      </div>`;
+
+    // Bind AI button after innerHTML is set
+    document.getElementById('btn-ai-analysis')?.addEventListener('click', _runAIAnalysis);
 
     document.getElementById('global-inst-sel').addEventListener('change', e => {
       _selectedInstrument = e.target.value;
@@ -95,8 +103,6 @@ const MonitoringModule = (() => {
       numericFields.map(f => `<option value="${f.id}" ${_selectedField===f.id?'selected':''}>${f.name}</option>`).join('');
     if (!_selectedField) _selectedField = '__score__';
   }
-  
-  document.getElementById('global-charts-area').innerHTML = '';
 
   function drawGlobalCharts() {
     Charts.destroyAll();
@@ -204,17 +210,6 @@ const MonitoringModule = (() => {
     Charts.line('chart-global-line', allDates.map(d => Utils.formatDateShort(d)), lineDatasets);
     Charts.bar('chart-global-bar', barLabels, [{ label: _selectedField === '__score__' ? 'Puntuación' : inst.fields.find(f=>f.id===_selectedField)?.name || '', data: barData }]);
     if (radarLabels.length >= 3) Charts.radar('chart-global-radar', radarLabels, radarDatasets);
-  }
-  
-  // AI Analysis button
-  const toolbar = document.querySelector('#module-container .toolbar');
-  if (toolbar) {
-    const aiBtn = document.createElement('button');
-    aiBtn.className = 'btn btn-ghost btn-sm';
-    aiBtn.style.color = 'var(--color-accent)';
-    aiBtn.innerHTML = '✨ Analizar con IA';
-    aiBtn.onclick = () => _runAIAnalysis();
-    toolbar.appendChild(aiBtn);
   }
 
   // ── BY PATIENT VIEW ──
